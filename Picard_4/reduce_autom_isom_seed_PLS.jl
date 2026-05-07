@@ -92,33 +92,29 @@ end
 number_before_automorphisms_each_m = [sum(length.(pseudo_manifolds_DB[m])) for m in 6:15]
 println("Number before automorphisms: ", number_before_automorphisms_each_m)
 
-# database_reduce_autom = reduce_by_automorphisms(pseudo_manifolds_DB, mat_DB_bin, 6:15)
+database_reduce_autom = reduce_by_automorphisms(pseudo_manifolds_DB, mat_DB_bin, 6:15)
 
-# # ── Build database_before_iso ─────────────────────────────────────────────────
+# ── Build database_before_iso ─────────────────────────────────────────────────
 
-# database_before_iso = Dict{Tuple{Int,Int}, Set{Vector{UInt16}}}()
+database_before_iso = Dict{Tuple{Int,Int}, Set{Vector{UInt16}}}()
 
-# for m in 6:15
-#     for (l, bases) in enumerate(mat_DB_bin[m])
-#         V           = reduce(|, bases)
-#         compl_bases = [base ⊻ V for base in bases]
+for m in 6:15
+    for (l, bases) in enumerate(mat_DB_bin[m])
+        V           = reduce(|, bases)
+        compl_bases = [base ⊻ V for base in bases]
 
-#         @showprogress desc="Building DB (m=$m): " for facets_bit in database_reduce_autom[m][l]
-#             facets_bin = compl_bases[findall(facets_bit)]
-#             nv_K = count_ones(reduce(|, facets_bin))
-#             d_K  = count_ones(facets_bin[1]) - 1
-#             db = get!(database_before_iso, (d_K, nv_K), Set{Vector{UInt16}}())
-#             push!(db, copy(sort(facets_bin)))
-#         end
-#     end
-# end
+        @showprogress desc="Building DB (m=$m): " for facets_bit in database_reduce_autom[m][l]
+            facets_bin = compl_bases[findall(facets_bit)]
+            nv_K = count_ones(reduce(|, facets_bin))
+            d_K  = count_ones(facets_bin[1]) - 1
+            db = get!(database_before_iso, (d_K, nv_K), Set{Vector{UInt16}}())
+            push!(db, copy(sort(facets_bin)))
+        end
+    end
+end
 
-# open("results/pseudo_manifolds_autom_sorted_no_ghost.jls", "w") do io
-#     serialize(io, database_before_iso)
-# end
-
-database_before_iso = open("results/pseudo_manifolds_autom_sorted_no_ghost.jls", "r") do io
-    deserialize(io)
+open("results/pseudo_manifolds_autom_sorted_no_ghost.jls", "w") do io
+    serialize(io, database_before_iso)
 end
 
 number_before_pre_filters_each_m = [length(database_before_iso[(m - 4 - 1, m)]) for m in 6:15]
