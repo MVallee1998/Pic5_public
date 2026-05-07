@@ -137,10 +137,10 @@ database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.
 database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt32)])
 
 const database_tc_seed_index = Dict{Tuple{Int,Int},
-    Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt16}}}}}()
+    Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt32}}}}}()
 
 for (k, v) in database_tc_seed_PLS
-    database_tc_seed_index[k] = build_index(v, UInt16)
+    database_tc_seed_index[k] = build_index(v, UInt32)
 end
 
 
@@ -179,7 +179,6 @@ for m in 3:9
         end
 
         # Phase 2 : Oscar verifications (sequential)
-        db_index = build_index(db_seed,UInt32)
         prog2 = Progress(length(candidates); desc="Iso checks (m=$m, Pic=$Pic): ")
 
         for facets_bin in candidates
