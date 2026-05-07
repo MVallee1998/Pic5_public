@@ -36,4 +36,4 @@ open("resources/pseudo_manifolds_7-10.jls", "w") do io
     serialize(io, pseudo_manifolds_DB)
 end
 
-println("Step 1 done. pseudo_manifolds_7-10.jls saved.")
+println("Step 1 done. results/pseudo_manifolds_7-10.jls saved.")

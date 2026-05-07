@@ -228,10 +228,3 @@ build_iso_db!(iso_DB,simple_bin_matroids_bin,ms=7:10,verbose=true)
 open("resources/iso_DB.jls", "w") do io
     serialize(io, iso_DB)
 end
-
-
-
-
-
-
-

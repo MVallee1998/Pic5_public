@@ -118,4 +118,4 @@ open("results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls", "w") do io
     serialize(io, database_before_iso)
 end
 
-println("Step 2 done. database_before_iso saved to pseudo_manifolds_autom_sorted_no_ghost_7-10.jls")
+println("Step 2 done. database_before_iso saved to results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls")

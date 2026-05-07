@@ -103,4 +103,4 @@ open("results/TC_seed_PLS_7-10.jls", "w") do io
     serialize(io, database_tc_seed_PLS)
 end
 
-println("Step 3 done. Seeds saved to Pic_5_tc_seed_PLS_7-10.jls")
+println("Step 3 done. Seeds saved to results/Pic_5_tc_seed_PLS_7-10.jls")
