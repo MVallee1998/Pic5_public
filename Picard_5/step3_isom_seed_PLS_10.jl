@@ -43,7 +43,7 @@ candidates_all = Dict{Any, Vector{Tuple{Vararg{UInt32}}}}()
 
 Pic=5
 key_in = (m - Pic - 1, m)
-haskey(database_before_iso, key_in) || continue
+haskey(database_before_iso, key_in)
 items   = collect(database_before_iso[key_in])
 db_seed = get!(database_tc_seed_PLS, key_in, Set{Tuple{Vararg{UInt32}}}())
 
@@ -68,7 +68,7 @@ open("results/candidates_7-10.jls", "w") do io
     serialize(io, candidates_all)
 end
 
-haskey(candidates_all, key_in) || continue
+haskey(candidates_all, key_in)
 candidates = candidates_all[key_in]
 
 db_seed  = get!(database_tc_seed_PLS, key_in, Set{Tuple{Vararg{UInt32}}}())  # ← re-fetch

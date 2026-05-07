@@ -1,5 +1,5 @@
 include("../simplicial_complex_utilities.jl")
-
+using Base.Threads
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 function convert_dict_uint16_to_uint32(
@@ -146,6 +146,10 @@ end
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
+number_before_PL_sphere_checks_each_m = zeros(Int, 3)
+
+number_seeds_each_m = zeros(Int, 3)
+
 for m in 3:9
     for Pic in 1:5
         key_in = (m - Pic - 1, m)
@@ -157,6 +161,10 @@ for m in 3:9
                         
         # Phase 1 : parallel filters
         prog = Progress(length(items); desc="Filters (m=$m, Pic=$Pic): ")
+
+        if Pic == 5 && m>=7
+            number_before_PL_sphere_checks_each_m[m-6] = length(items)
+        end
 
         candidates = let
             local_cands = [Vector{Tuple{Vararg{UInt32}}}() for _ in 1:length(items)]
@@ -195,7 +203,9 @@ for m in 3:9
                                        (:buckets,    length(db_index))])
         end
 
-        Pic == 5 && println("Seed count Pic=$Pic m=$m: ", length(db_seed))
+        if Pic == 5 && m>=7
+            number_seeds_each_m[m-6] = length(db_seed)
+        end
     end
 end
 
