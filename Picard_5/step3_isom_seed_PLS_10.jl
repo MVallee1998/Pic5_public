@@ -64,6 +64,8 @@ end
 
 candidates_all[key_in] = candidates
 
+println("Number of candidates after filters (m=$m, Pic=$Pic): ", length(candidates))
+
 open("results/candidates_7-10.jls", "w") do io
     serialize(io, candidates_all)
 end
@@ -103,4 +105,4 @@ open("results/TC_seed_PLS_7-10.jls", "w") do io
     serialize(io, database_tc_seed_PLS)
 end
 
-println("Step 3 done. Seeds saved to results/Pic_5_tc_seed_PLS_7-10.jls")
+println("Step 3 done. Seeds saved to results/TC_seed_PLS_7-10.jls")

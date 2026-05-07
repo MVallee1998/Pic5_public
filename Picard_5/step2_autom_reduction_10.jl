@@ -118,4 +118,7 @@ open("results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls", "w") do io
     serialize(io, database_before_iso)
 end
 
+number_before_pre_filters_each_m = [length(database_before_iso[(m - 5 - 1, m)]) for m in 7:10]
+println("Number before pre-filters: ", number_before_pre_filters_each_m)
+
 println("Step 2 done. database_before_iso saved to results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls")

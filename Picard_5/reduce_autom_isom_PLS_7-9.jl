@@ -162,9 +162,6 @@ for m in 3:9
         # Phase 1 : parallel filters
         prog = Progress(length(items); desc="Filters (m=$m, Pic=$Pic): ")
 
-        if Pic == 5 && m>=7
-            number_before_PL_sphere_checks_each_m[m-6] = length(items)
-        end
 
         candidates = let
             local_cands = [Vector{Tuple{Vararg{UInt32}}}() for _ in 1:length(items)]
@@ -176,6 +173,10 @@ for m in 3:9
                 push!(local_cands[i], Tuple(facets_bin))
             end
             reduce(vcat, local_cands)
+        end
+
+        if Pic == 5 && m>=7
+            number_before_PL_sphere_checks_each_m[m-6] = length(candidates)
         end
 
         # Phase 2 : Oscar verifications (sequential)
@@ -207,6 +208,9 @@ for m in 3:9
         end
     end
 end
+
+println("Number before PL sphere checks: ", number_before_PL_sphere_checks_each_m)
+println("Number of seeds: ", number_seeds_each_m)
 
 # ── Save ──────────────────────────────────────────────────────────────────────
 

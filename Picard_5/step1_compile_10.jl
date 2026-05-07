@@ -36,4 +36,7 @@ open("resources/pseudo_manifolds_7-10.jls", "w") do io
     serialize(io, pseudo_manifolds_DB)
 end
 
+number_before_automorphisms_each_m = [sum(length.(pseudo_manifolds_DB[m])) for m in 7:10]
+println("Number before automorphisms: ", number_before_automorphisms_each_m)
+
 println("Step 1 done. results/pseudo_manifolds_7-10.jls saved.")
