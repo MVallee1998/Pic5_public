@@ -32,7 +32,7 @@ pseudo_manifolds_DB[10] = Vector{Set{BitVector}}[]
     push!(pseudo_manifolds_DB[10], selected_pseudomanifolds)
 end
 
-open("resources/pseudo_manifolds_7-10.jls", "w") do io
+open("results/pseudo_manifolds_7-10.jls", "w") do io
     serialize(io, pseudo_manifolds_DB)
 end
 

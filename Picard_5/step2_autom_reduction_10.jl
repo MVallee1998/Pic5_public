@@ -1,4 +1,5 @@
 include("../simplicial_complex_utilities.jl")
+using ProgressMeter
 
 
 mmax = 10
@@ -91,7 +92,91 @@ function reduce_by_automorphisms(
     return result
 end
 
-database_reduce_autom = reduce_by_automorphisms(pseudo_manifolds_DB, mat_DB_bin, mmax:mmax)
+function reduce_by_automorphisms_parallel(
+    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    mat_DB_bin::Dict{Int, Vector{Vector{UInt32}}},
+    ms::UnitRange{Int}
+)::Dict{Int, Vector{Set{BitVector}}}
+
+    result = Dict{Int, Vector{Set{BitVector}}}()
+
+    for m in ms
+        result[m] = Vector{Set{BitVector}}()
+
+        for (l, bases) in enumerate(mat_DB_bin[m])
+            V_bin       = reduce(|, bases)
+            compl_bases = [base ⊻ V_bin for base in bases]
+
+            facets_M = [
+                [i for i in 1:(8 * sizeof(cobase)) if (cobase >> (i-1)) & 1 == 1]
+                for cobase in compl_bases
+            ]
+
+            M               = simplicial_complex(facets_M)
+            faces_list      = collect(facets(M))
+            facets_internal = Vector{UInt32}(undef, length(faces_list))
+
+            for j in eachindex(faces_list)
+                mask = UInt32(0)
+                for v in faces_list[j]
+                    mask |= UInt32(1) << (v - 1)
+                end
+                facets_internal[j] = mask
+            end
+
+            index     = Dict(facets_internal[i] => i for i in eachindex(facets_internal))
+            G         = automorphism_group(M)
+            all_autos = collect(elements(G))
+
+            @inline function permute_facet(mask::UInt32, g)
+                h = UInt32(0)
+                x = mask
+                while x != 0
+                    v  = trailing_zeros(x) + 1
+                    h |= UInt32(1) << (g(v) - 1)
+                    x &= x - 1
+                end
+                return h
+            end
+
+            sigmas = map(all_autos) do g
+                map(eachindex(facets_internal)) do j
+                    index[permute_facet(facets_internal[j], g)]
+                end
+            end
+
+            # ── Pure function: safe to call from any thread ───────────────
+            function canonical_rep(χ::BitVector)
+                best = χ
+                for σ in sigmas
+                    χ2 = falses(length(χ))
+                    @inbounds for ii in eachindex(χ)
+                        χ[ii] && (χ2[σ[ii]] = true)
+                    end
+                    χ2 < best && (best = χ2)
+                end
+                return best
+            end
+
+            # ── Parallel map, then deduplicate ────────────────────────────
+            χ_vec  = collect(pseudo_manifolds_DB[m][l])
+            reps   = Vector{BitVector}(undef, length(χ_vec))
+            prog = Progress(length(χ_vec); desc="Automorphisms (m=$m, l=$l): ", showspeed=true, dt=0.0)
+
+            Threads.@threads for i in eachindex(χ_vec)
+                reps[i] = canonical_rep(χ_vec[i])
+                next!(prog)
+
+            end
+
+            push!(result[m], Set(reps))   # Set() deduplicates
+        end
+    end
+
+    return result
+end
+
+database_reduce_autom = reduce_by_automorphisms_parallel(pseudo_manifolds_DB, mat_DB_bin, mmax:mmax)
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
