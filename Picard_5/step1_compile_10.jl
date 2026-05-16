@@ -26,7 +26,7 @@ pseudo_manifolds_DB[10] = Vector{Set{BitVector}}[]
     for facets_bit in pseudo_manifolds_DB_k
         facets_bin = compl_basis_vecs[findall(facets_bit)]
         nv_K = count_ones(reduce(|, facets_bin))
-        nv_K == 10 && push!(selected_pseudomanifolds, facets_bit)
+        push!(selected_pseudomanifolds, facets_bit)
     end
 
     push!(pseudo_manifolds_DB[10], selected_pseudomanifolds)

@@ -89,10 +89,94 @@ function reduce_by_automorphisms(
     return result
 end
 
+function reduce_by_automorphisms_parallel(
+    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    mat_DB_bin::Dict{Int, Vector{Vector{UInt16}}},
+    ms::UnitRange{Int}
+)::Dict{Int, Vector{Set{BitVector}}}
+
+    result = Dict{Int, Vector{Set{BitVector}}}()
+
+    for m in ms
+        result[m] = Vector{Set{BitVector}}()
+
+        for (l, bases) in enumerate(mat_DB_bin[m])
+            V_bin       = reduce(|, bases)
+            compl_bases = [base ⊻ V_bin for base in bases]
+
+            facets_M = [
+                [i for i in 1:(8 * sizeof(cobase)) if (cobase >> (i-1)) & 1 == 1]
+                for cobase in compl_bases
+            ]
+
+            M               = simplicial_complex(facets_M)
+            faces_list      = collect(facets(M))
+            facets_internal = Vector{UInt16}(undef, length(faces_list))
+
+            for j in eachindex(faces_list)
+                mask = UInt16(0)
+                for v in faces_list[j]
+                    mask |= UInt16(1) << (v - 1)
+                end
+                facets_internal[j] = mask
+            end
+
+            index     = Dict(facets_internal[i] => i for i in eachindex(facets_internal))
+            G         = automorphism_group(M)
+            all_autos = collect(elements(G))
+
+            @inline function permute_facet(mask::UInt16, g)
+                h = UInt16(0)
+                x = mask
+                while x != 0
+                    v  = trailing_zeros(x) + 1
+                    h |= UInt16(1) << (g(v) - 1)
+                    x &= x - 1
+                end
+                return h
+            end
+
+            sigmas = map(all_autos) do g
+                map(eachindex(facets_internal)) do j
+                    index[permute_facet(facets_internal[j], g)]
+                end
+            end
+
+            # ── Pure function: safe to call from any thread ───────────────
+            function canonical_rep(χ::BitVector)
+                best = χ
+                for σ in sigmas
+                    χ2 = falses(length(χ))
+                    @inbounds for ii in eachindex(χ)
+                        χ[ii] && (χ2[σ[ii]] = true)
+                    end
+                    χ2 < best && (best = χ2)
+                end
+                return best
+            end
+
+            # ── Parallel map, then deduplicate ────────────────────────────
+            χ_vec  = collect(pseudo_manifolds_DB[m][l])
+            reps   = Vector{BitVector}(undef, length(χ_vec))
+            prog = Progress(length(χ_vec); desc="Automorphisms (m=$m, l=$l): ", showspeed=true, dt=0.0)
+
+            Threads.@threads for i in eachindex(χ_vec)
+                reps[i] = canonical_rep(χ_vec[i])
+                next!(prog)
+
+            end
+
+            push!(result[m], Set(reps))   # Set() deduplicates
+        end
+    end
+
+    return result
+end
+
 number_before_automorphisms_each_m = [sum(length.(pseudo_manifolds_DB[m])) for m in 6:15]
 println("Number before automorphisms: ", number_before_automorphisms_each_m)
 
-database_reduce_autom = reduce_by_automorphisms(pseudo_manifolds_DB, mat_DB_bin, 6:15)
+database_reduce_autom = reduce_by_automorphisms_parallel(pseudo_manifolds_DB, mat_DB_bin, 6:15)
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
@@ -125,8 +209,8 @@ println("Number before pre-filters: ", number_before_pre_filters_each_m)
 database_tc_seed_PLS = Dict{Tuple{Int,Int}, Set{Tuple{Vararg{UInt16}}}}()
 
 database_tc_seed_PLS[(0, 2)] = Set([(UInt16(1), UInt16(2))])
-database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt16)])
-database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt16)])
+# database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt16)])
+# database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt16)])
 
 const database_tc_seed_index = Dict{Tuple{Int,Int},
     Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt16}}}}}()
