@@ -5,7 +5,7 @@
 #SBATCH --error=step2_7-10.err
 #
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=128
+#SBATCH --cpus-per-task=64
 #SBATCH --time=2-00:00
 #SBATCH --mem=200G
 
