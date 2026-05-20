@@ -34,7 +34,7 @@ end
 
 const link_cache = Dict{LinkKey, Union{Nothing, Tuple{Vararg{UInt32}}}}()
 
-function cached_link_seed(facets_bin::Facets, v::UInt32)
+function cached_link_seed(facets_bin::Vector{U}, v::U) where {U<:Unsigned}
     key = LinkKey(Tuple(sort!(collect(facets_bin))), v)
     get!(link_cache, key) do
         Lk = find_seed_bit(link_facets(facets_bin, v))
