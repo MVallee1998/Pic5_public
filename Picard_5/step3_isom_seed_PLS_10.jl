@@ -45,6 +45,7 @@ end
 candidates_all = Dict{Any, Vector{Tuple{Vararg{UInt32}}}}()
 
 Pic=5
+m=10
 key_in = (m - Pic - 1, m)
 haskey(database_before_iso, key_in)
 items   = collect(database_before_iso[key_in])
