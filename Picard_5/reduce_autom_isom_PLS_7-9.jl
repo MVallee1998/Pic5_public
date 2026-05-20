@@ -135,6 +135,8 @@ database_tc_seed_PLS = Dict{Tuple{Int,Int}, Set{Tuple{Vararg{UInt32}}}}()
 database_tc_seed_PLS[(0, 2)] = Set([(UInt32(1), UInt32(2))])
 database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt32)])
 database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt32)])
+# database_tc_seed_PLS[(4, 10)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8, 9:10)]),UInt32)])
+
 
 const database_tc_seed_index = Dict{Tuple{Int,Int},
     Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt32}}}}}()

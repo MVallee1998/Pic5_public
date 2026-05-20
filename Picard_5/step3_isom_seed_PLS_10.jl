@@ -16,6 +16,9 @@ database_tc_seed_PLS = open("results/TC_seed_PLS_7-9.jls", "r") do io
     deserialize(io)
 end
 
+database_tc_seed_PLS[(4, 10)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8, 9:10)]),UInt32)])
+
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
 # Build once, outside the m loop
