@@ -1,4 +1,5 @@
 include("../simplicial_complex_utilities.jl")
+using Base.Threads
 
 mmax = 10
 
