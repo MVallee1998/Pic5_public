@@ -176,7 +176,7 @@ function reduce_by_automorphisms_parallel(
     return result
 end
 
-database_reduce_autom = reduce_by_automorphisms(pseudo_manifolds_DB, mat_DB_bin, mmax:mmax)
+database_reduce_autom = reduce_by_automorphisms_parallel(pseudo_manifolds_DB, mat_DB_bin, mmax:mmax)
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
