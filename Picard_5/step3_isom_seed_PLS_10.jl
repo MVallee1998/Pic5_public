@@ -17,6 +17,10 @@ database_tc_seed_PLS = open("results/TC_seed_PLS_7-9.jls", "r") do io
     deserialize(io)
 end
 
+# database_tc_seed_PLS_Pic4 = open("../Picard4/results/TC_seed_PLS.jls", "r") do io
+#     deserialize(io)
+# end
+
 database_tc_seed_PLS[(4, 10)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8, 9:10)]),UInt32)])
 
 
