@@ -59,7 +59,7 @@ function subset_bitvector(superset::Vector{U}, subset::Vector{U}) where {U<:Unsi
     return BitVector(x in S for x in superset)
 end
 
-function euler_characteristic_sphere(top_facets::Vector{U}) where {U<:Unsigned}
+function euler_characteristic_sphere(top_facets::AbstractVector{U}) where {U<:Unsigned}
     isempty(top_facets) && return 0
 
     d = count_ones(top_facets[1]) - 1
@@ -96,7 +96,7 @@ function euler_characteristic_sphere(top_facets::Vector{U}) where {U<:Unsigned}
     return χ
 end
 
-function euler_sphere_test(top_facets::Vector{U}) where {U<:Unsigned}
+function euler_sphere_test(top_facets::AbstractVector{U}) where {U<:Unsigned}
     isempty(top_facets) && return false
     d = count_ones(top_facets[1]) - 1
     χ = euler_characteristic_sphere(top_facets)

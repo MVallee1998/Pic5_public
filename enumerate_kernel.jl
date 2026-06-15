@@ -51,20 +51,13 @@ end
 Update `row_sums` in-place after `y` has been XOR-flipped along `support`.
 `y[j]` already holds its new value; the delta is +1 if true, -1 if false.
 """
-@inline function update_row_sums!(row_sums::Vector{Int}, y::BitVector,
-                                   support::Vector{Tuple{Int,Vector{Int}}})
-    @inbounds for (r, cols) in support, j in cols
-        row_sums[r] += y[j] ? 1 : -1
-    end
-end
-
-# ADD this method (keep the BitVector one for enumerate_from_prepared_parallel)
 @inline function update_row_sums!(row_sums::Vector{Int}, y::Vector{Bool},
                                    support::Vector{Tuple{Int,Vector{Int}}})
     @inbounds for (r, cols) in support, j in cols
         row_sums[r] += y[j] ? 1 : -1
     end
 end
+
 
 """
 1-based index of the bit that changes between Gray codes g(i-1) and g(i), i ≥ 1.
@@ -200,10 +193,9 @@ compute echelon form, and build per-free-variable row support.
 Returns a `KernelEnumState`, or `nothing` if the system is infeasible.
 """
 function prepare_kernel_enumeration(A::SparseMatrixCSC{Bool,Int},
-                                    B::Vector{BitVector},
-                                    S::BitVector)
-    n    = size(A, 2)
-    rows = sparse_rows(A)
+                                    B::Vector{BitVector}, S::BitVector,
+                                    rows::Vector{Vector{Int}} = sparse_rows(A))
+    n = size(A, 2)
 
     if isempty(B)
         all(.!S) || return nothing
@@ -279,23 +271,6 @@ Enumerate all valid solutions in the Gray-code interval [`start`, `stop`].
 Valid solutions (all row sums 0 or 2) are appended to `results`.
 """
 function enumerate_block!(results  ::Vector{BitVector},
-                          y        ::BitVector,
-                          row_sums ::Vector{Int},
-                          state    ::KernelEnumState,
-                          start    ::UInt64,
-                          stop     ::UInt64)
-    valid_row_sums(row_sums) && push!(results, copy(y))
-    @inbounds for i in (start + UInt64(1)):stop
-        fi  = gray_flip_index(i)
-        idx = state.free_indices[fi]
-        y .⊻= state.B_ech[idx]
-        update_row_sums!(row_sums, y, state.free_row_support[fi])
-        valid_row_sums(row_sums) && push!(results, copy(y))
-    end
-end
-
-# ADD alongside existing enumerate_block!
-function enumerate_block!(results  ::Vector{BitVector},
                           y        ::Vector{Bool},
                           row_sums ::Vector{Int},
                           state    ::KernelEnumState,
@@ -304,7 +279,7 @@ function enumerate_block!(results  ::Vector{BitVector},
     valid_row_sums(row_sums) && push!(results, BitVector(y))
     @inbounds for i in (start + UInt64(1)):stop
         fi = gray_flip_index(i)
-        for j in state.free_col_support[fi]   # replaces y .⊻= state.B_ech[idx]
+        for j in state.free_col_support[fi]
             y[j] = !y[j]
         end
         update_row_sums!(row_sums, y, state.free_row_support[fi])
@@ -316,78 +291,57 @@ end
 function enumerate_from_prepared(state::KernelEnumState)
     y  = Vector{Bool}(state.y_forced)
     rs = compute_row_sums(y, state.rows)
-
     results = BitVector[]
     if state.num_free == 0
         valid_row_sums(rs) && push!(results, BitVector(y))
         return results
     end
-
     total = UInt64(1) << state.num_free
     sizehint!(results, min(total, 1000))
     enumerate_block!(results, y, rs, state, UInt64(0), total - UInt64(1))
     return results
 end
 
-function enumerate_from_prepared!(callback::F, state::KernelEnumState) where {F}
-    y  = Vector{Bool}(state.y_forced)
-    rs = compute_row_sums(y, state.rows)
-    if state.num_free == 0
-        valid_row_sums(rs) && callback(y)
-        return
-    end
-    total = UInt64(1) << state.num_free
-    valid_row_sums(rs) && callback(y)
-    @inbounds for i in UInt64(1):(total - UInt64(1))
-        fi = gray_flip_index(i)
-        for j in state.free_col_support[fi]
-            y[j] = !y[j]
-        end
-        update_row_sums!(rs, y, state.free_row_support[fi])
-        valid_row_sums(rs) && callback(y)
-    end
-end
 
+# function enumerate_from_prepared_parallel(state::KernelEnumState)
+#     state.num_free == 0 && return enumerate_from_prepared(state)
 
-function enumerate_from_prepared_parallel(state::KernelEnumState)
-    state.num_free == 0 && return enumerate_from_prepared(state)
+#     num_threads = Threads.nthreads()
+#     prefix_bits = min(ceil(Int, log2(max(num_threads, 2))), state.num_free - 1)
+#     prefix_bits == 0 && return enumerate_from_prepared(state)
 
-    num_threads = Threads.nthreads()
-    prefix_bits = min(ceil(Int, log2(max(num_threads, 2))), state.num_free - 1)
-    prefix_bits == 0 && return enumerate_from_prepared(state)
+#     num_blocks = 1 << prefix_bits
+#     block_size = UInt64(1) << (state.num_free - prefix_bits)
 
-    num_blocks = 1 << prefix_bits
-    block_size = UInt64(1) << (state.num_free - prefix_bits)
+#     thread_results = [BitVector[] for _ in 1:num_blocks]
 
-    thread_results = [BitVector[] for _ in 1:num_blocks]
+#     Threads.@threads for b in 0:(num_blocks - 1)
+#         let b = b, local_results = thread_results[b + 1]
+#             start      = UInt64(b) * block_size
+#             gray_start = start ⊻ (start >> 1)
 
-    Threads.@threads for b in 0:(num_blocks - 1)
-        let b = b, local_results = thread_results[b + 1]
-            start      = UInt64(b) * block_size
-            gray_start = start ⊻ (start >> 1)
+#             y = copy(state.y_forced)
+#             for fi in 1:state.num_free
+#                 (gray_start >> (fi - 1)) & UInt64(1) == UInt64(1) &&
+#                     (y .⊻= state.B_ech[state.free_indices[fi]])
+#             end
 
-            y = copy(state.y_forced)
-            for fi in 1:state.num_free
-                (gray_start >> (fi - 1)) & UInt64(1) == UInt64(1) &&
-                    (y .⊻= state.B_ech[state.free_indices[fi]])
-            end
+#             rs = compute_row_sums(y, state.rows)
+#             enumerate_block!(local_results, y, rs, state,
+#                              start, start + block_size - UInt64(1))
+#         end
+#     end
 
-            rs = compute_row_sums(y, state.rows)
-            enumerate_block!(local_results, y, rs, state,
-                             start, start + block_size - UInt64(1))
-        end
-    end
-
-    return reduce(vcat, thread_results)
-end
+#     return reduce(vcat, thread_results)
+# end
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-function enumerate_kernel_with_constraints_bitvector(A::SparseMatrixCSC{Bool,Int},
-                                                      B::Vector{BitVector},
-                                                      S::BitVector)
-    state = prepare_kernel_enumeration(A, B, S)
-    state === nothing && return BitVector[]
-    return enumerate_from_prepared_parallel(state)
-end
+# function enumerate_kernel_with_constraints_bitvector(A::SparseMatrixCSC{Bool,Int},
+#                                                       B::Vector{BitVector},
+#                                                       S::BitVector)
+#     state = prepare_kernel_enumeration(A, B, S)
+#     state === nothing && return BitVector[]
+#     return enumerate_from_prepared_parallel(state)
+# end

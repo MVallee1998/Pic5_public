@@ -1,7 +1,7 @@
 include("../enumerate_kernel.jl")
 
 using Base.Threads
-
+using Profile
 
 function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVector}}},
                                        mat_DB::Dict{Int,Vector{Vector{UInt32}}},
@@ -17,6 +17,7 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
 
     result          = Set{BitVector}()
     thread_results  = [Set{BitVector}() for _ in 1:Threads.maxthreadid()]
+    rows = sparse_rows(A)
 
     for (index_contraction, perm) in iso_DB[m][l]
         links = collect(pseudo_manifolds_DB[m-1][index_contraction])
@@ -30,15 +31,14 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
         foreach(empty!, thread_results)
 
         prog = Progress(length(prepared), dt=0.5, desc="l=$(l), links=$(length(links))")
-        Threads.@threads :static for i in eachindex(prepared)
-            state = prepare_kernel_enumeration(A, kernel_basis, prepared[i])
-            if state !== nothing
-                tid = Threads.threadid()
-                enumerate_from_prepared!(state) do y_bool
-                    facets_bin = compl_bases_bin[findall(y_bool)]
-                    if euler_sphere_test(facets_bin)
-                        push!(thread_results[tid], BitVector(y_bool))
-                    end
+        Threads.@threads for i in eachindex(prepared)
+            state = prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows)
+            state === nothing && continue
+            tid = Threads.threadid()
+            for K_bit in enumerate_from_prepared(state)
+                facets_bin = compl_bases_bin[findall(K_bit)]
+                if euler_sphere_test(facets_bin)
+                    push!(thread_results[tid], copy(K_bit))
                 end
             end
             next!(prog)
@@ -64,5 +64,6 @@ mat_DB = open("resources/mat_DB.jls", "r") do io deserialize(io) end
 iso_DB = open("resources/iso_DB.jls", "r") do io deserialize(io) end
 pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9_all.jls", "r") do io deserialize(io) end
 
-build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
-# Profile.print(mincount=50)
+Profile.init(n = 10^7, delay = 0.01)
+@profile build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
+Profile.print(mincount=50)
