@@ -2,7 +2,6 @@ using Serialization
 using Oscar
 using ProgressMeter
 using SparseArrays
-using Serialization
 using LinearAlgebra
 using Nemo
 
