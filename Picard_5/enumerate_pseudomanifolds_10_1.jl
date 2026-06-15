@@ -9,8 +9,8 @@ function build_finalDB_single_v_one_m!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
     pseudo_manifolds_DB[m] = Vector{Set{BitVector}}()
     println(length(mat_DB[m]), " mat_DB entries for m=$(m). ")
 
-    for l in [1:23]
-        bases_bin = mat_DB[m][l]
+    for (l, bases_bin) in enumerate(mat_DB[m])
+        l in [24:46] && continue
         V_bin = reduce(|, bases_bin)
         compl_bases_bin = [base ⊻ V_bin for base in bases_bin]
         ridges, A = boundary_incidence_facets_to_ridges(compl_bases_bin)
@@ -60,6 +60,6 @@ end
 
 build_finalDB_single_v_one_m!(pseudo_manifolds_DB,mat_DB_bin,iso_DB,10)
 
-# open("results/pseudo_manifolds_7-10_all.jls", "w") do io
-#     serialize(io, pseudo_manifolds_DB)
-# end
+open("results/pseudo_manifolds_7-10_all.jls", "w") do io
+    serialize(io, pseudo_manifolds_DB)
+end
