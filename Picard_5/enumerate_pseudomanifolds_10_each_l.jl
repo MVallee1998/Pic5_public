@@ -1,8 +1,6 @@
 include("../enumerate_kernel.jl")
 
-using Base.Threads: @spawn
-using ThreadsX
-using Profile
+using Base.Threads
 
 
 function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVector}}},
@@ -17,31 +15,37 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
     ridges, A = boundary_incidence_facets_to_ridges(compl_bases_bin)
     kernel_basis = kernel_basis_mod2_sparse(A)
 
-    result = Set{BitVector}()
+    result          = Set{BitVector}()
+    thread_results  = [Set{BitVector}() for _ in 1:Threads.maxthreadid()]
 
     for (index_contraction, perm) in iso_DB[m][l]
         links = collect(pseudo_manifolds_DB[m-1][index_contraction])
 
-        # Precompute all mandatory_facets_bit upfront (cheap, serial)
         prepared = Vector{BitVector}(undef, length(links))
         for (i, L_bit) in pairs(links)
             mandatory_facets_bin = relabel(mat_DB[m-1][index_contraction][findall(L_bit)], perm)
             prepared[i] = subset_bitvector(bases_bin, mandatory_facets_bin)
         end
 
-        @showprogress dt=0.5 desc="l=$(l), links=$(length(links))" for mandatory_facets_bit in prepared
-            all_solutions_bit = enumerate_kernel_with_constraints_bitvector(A, kernel_basis, mandatory_facets_bit)
+        foreach(empty!, thread_results)
 
-            solutions = collect(all_solutions_bit)
-            tasks = [@spawn begin
-                facets_bin = compl_bases_bin[findall(K_bit)]
-                euler_sphere_test(facets_bin) ? copy(K_bit) : nothing
-            end for K_bit in solutions]
-
-            for t in tasks
-                r = fetch(t)
-                r !== nothing && push!(result, r)
+        prog = Progress(length(prepared), dt=0.5, desc="l=$(l), links=$(length(links))")
+        Threads.@threads :static for i in eachindex(prepared)
+            state = prepare_kernel_enumeration(A, kernel_basis, prepared[i])
+            if state !== nothing
+                tid = Threads.threadid()
+                enumerate_from_prepared!(state) do y_bool
+                    facets_bin = compl_bases_bin[findall(y_bool)]
+                    if euler_sphere_test(facets_bin)
+                        push!(thread_results[tid], BitVector(y_bool))
+                    end
+                end
             end
+            next!(prog)
+        end
+
+        for lr in thread_results
+            union!(result, lr)
         end
     end
 
@@ -60,5 +64,5 @@ mat_DB = open("resources/mat_DB.jls", "r") do io deserialize(io) end
 iso_DB = open("resources/iso_DB.jls", "r") do io deserialize(io) end
 pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9_all.jls", "r") do io deserialize(io) end
 
-@profile build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
-Profile.print(mincount=50)
+build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
+# Profile.print(mincount=50)

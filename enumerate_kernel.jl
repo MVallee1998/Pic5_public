@@ -31,7 +31,7 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 
 """Compute row sums of `y` w.r.t. a row adjacency list."""
-function compute_row_sums(y::BitVector, rows::Vector{Vector{Int}})
+function compute_row_sums(y::AbstractVector{Bool}, rows::Vector{Vector{Int}})
     rs = zeros(Int, length(rows))
     @inbounds for (r, js) in enumerate(rows), j in js
         rs[r] += y[j]
@@ -58,6 +58,14 @@ Update `row_sums` in-place after `y` has been XOR-flipped along `support`.
     end
 end
 
+# ADD this method (keep the BitVector one for enumerate_from_prepared_parallel)
+@inline function update_row_sums!(row_sums::Vector{Int}, y::Vector{Bool},
+                                   support::Vector{Tuple{Int,Vector{Int}}})
+    @inbounds for (r, cols) in support, j in cols
+        row_sums[r] += y[j] ? 1 : -1
+    end
+end
+
 """
 1-based index of the bit that changes between Gray codes g(i-1) and g(i), i ≥ 1.
 Uses the identity: the differing bit of consecutive Gray codes at step i is
@@ -76,6 +84,7 @@ struct KernelEnumState
     y_forced         ::BitVector
     rows             ::Vector{Vector{Int}}
     free_row_support ::Vector{Vector{Tuple{Int,Vector{Int}}}}
+    free_col_support ::Vector{Vector{Int}}
     num_free         ::Int
 end
 
@@ -199,7 +208,7 @@ function prepare_kernel_enumeration(A::SparseMatrixCSC{Bool,Int},
     if isempty(B)
         all(.!S) || return nothing
         return KernelEnumState(BitVector[], Int[], falses(n), rows,
-                               Vector{Vector{Tuple{Int,Vector{Int}}}}[], 0)
+                       Vector{Vector{Tuple{Int,Vector{Int}}}}[], Vector{Vector{Int}}[], 0)
     end
 
     S = copy(S)
@@ -259,7 +268,8 @@ function prepare_kernel_enumeration(A::SparseMatrixCSC{Bool,Int},
          for r in eachindex(rows) if any(j -> bv[j], rows[r])]
     end
 
-    return KernelEnumState(B_ech, free_indices, y, rows, free_row_support, num_free)
+    free_col_support = [findall(B_ech[free_indices[fi]]) for fi in 1:num_free]
+    return KernelEnumState(B_ech, free_indices, y, rows, free_row_support, free_col_support, num_free)
 end
 
 
@@ -284,14 +294,32 @@ function enumerate_block!(results  ::Vector{BitVector},
     end
 end
 
+# ADD alongside existing enumerate_block!
+function enumerate_block!(results  ::Vector{BitVector},
+                          y        ::Vector{Bool},
+                          row_sums ::Vector{Int},
+                          state    ::KernelEnumState,
+                          start    ::UInt64,
+                          stop     ::UInt64)
+    valid_row_sums(row_sums) && push!(results, BitVector(y))
+    @inbounds for i in (start + UInt64(1)):stop
+        fi = gray_flip_index(i)
+        for j in state.free_col_support[fi]   # replaces y .⊻= state.B_ech[idx]
+            y[j] = !y[j]
+        end
+        update_row_sums!(row_sums, y, state.free_row_support[fi])
+        valid_row_sums(row_sums) && push!(results, BitVector(y))
+    end
+end
+
 
 function enumerate_from_prepared(state::KernelEnumState)
-    y  = copy(state.y_forced)
+    y  = Vector{Bool}(state.y_forced)
     rs = compute_row_sums(y, state.rows)
 
     results = BitVector[]
     if state.num_free == 0
-        valid_row_sums(rs) && push!(results, copy(y))
+        valid_row_sums(rs) && push!(results, BitVector(y))
         return results
     end
 
@@ -299,6 +327,25 @@ function enumerate_from_prepared(state::KernelEnumState)
     sizehint!(results, min(total, 1000))
     enumerate_block!(results, y, rs, state, UInt64(0), total - UInt64(1))
     return results
+end
+
+function enumerate_from_prepared!(callback::F, state::KernelEnumState) where {F}
+    y  = Vector{Bool}(state.y_forced)
+    rs = compute_row_sums(y, state.rows)
+    if state.num_free == 0
+        valid_row_sums(rs) && callback(y)
+        return
+    end
+    total = UInt64(1) << state.num_free
+    valid_row_sums(rs) && callback(y)
+    @inbounds for i in UInt64(1):(total - UInt64(1))
+        fi = gray_flip_index(i)
+        for j in state.free_col_support[fi]
+            y[j] = !y[j]
+        end
+        update_row_sums!(rs, y, state.free_row_support[fi])
+        valid_row_sums(rs) && callback(y)
+    end
 end
 
 
