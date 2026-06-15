@@ -12,4 +12,4 @@
 
 mkdir -p logs results
 
-srun julia --threads 64 enumerate_pseudomanifolds_10_array.jl $SLURM_ARRAY_TASK_ID
+srun julia --threads 64 enumerate_pseudomanifolds_10_each_l.jl $SLURM_ARRAY_TASK_ID
