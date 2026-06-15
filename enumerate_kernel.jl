@@ -302,6 +302,40 @@ function enumerate_from_prepared(state::KernelEnumState)
     return results
 end
 
+function enumerate_from_prepared_parallel(state::KernelEnumState)
+    state.num_free == 0 && return enumerate_from_prepared(state)
+
+    num_threads = Threads.nthreads()
+    prefix_bits = min(ceil(Int, log2(max(num_threads, 2))), state.num_free - 1)
+    prefix_bits == 0 && return enumerate_from_prepared(state)
+
+    num_blocks = 1 << prefix_bits
+    block_size = UInt64(1) << (state.num_free - prefix_bits)
+
+    thread_results = [BitVector[] for _ in 1:num_blocks]
+
+    Threads.@threads for b in 0:(num_blocks - 1)
+        let b = b, local_results = thread_results[b + 1]
+            start      = UInt64(b) * block_size
+            gray_start = start ⊻ (start >> 1)
+
+            y = Vector{Bool}(state.y_forced)
+            for fi in 1:state.num_free          # apply Gray-code start state
+                if (gray_start >> (fi - 1)) & UInt64(1) == UInt64(1)
+                    for j in state.free_col_support[fi]   # ← uses free_col_support, not B_ech XOR
+                        y[j] = !y[j]
+                    end
+                end
+            end
+
+            rs = compute_row_sums(y, state.rows)
+            enumerate_block!(local_results, y, rs, state, start, start + block_size - UInt64(1))
+        end
+    end
+
+    return reduce(vcat, thread_results)
+end
+
 
 # function enumerate_from_prepared_parallel(state::KernelEnumState)
 #     state.num_free == 0 && return enumerate_from_prepared(state)

@@ -3,6 +3,8 @@ include("../enumerate_kernel.jl")
 using Base.Threads
 using Profile
 
+const HEAVY_THRESHOLD = 35
+
 function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVector}}},
                                        mat_DB::Dict{Int,Vector{Vector{UInt32}}},
                                        iso_DB::Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}},
@@ -28,28 +30,33 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
             prepared[i] = subset_bitvector(bases_bin, mandatory_facets_bin)
         end
 
-        foreach(empty!, thread_results)
+        states = [prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows) for i in eachindex(prepared)]
 
-        prog = Progress(length(prepared), dt=0.5, desc="l=$(l), links=$(length(links))")
-        Threads.@threads for i in eachindex(prepared)
-            state = prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows)
-            state === nothing && continue
+        for state in states
+            (state === nothing || state.num_free < HEAVY_THRESHOLD) && continue
+            for K_bit in enumerate_from_prepared_parallel(state)
+                facets_bin = compl_bases_bin[findall(K_bit)]
+                euler_sphere_test(facets_bin) && push!(result, copy(K_bit))
+            end
+        end
+
+        foreach(empty!, thread_results)
+        prog = Progress(count(s -> s === nothing || s.num_free < HEAVY_THRESHOLD, states),
+                        dt=0.5, desc="l=$(l), links=$(length(links))")
+        Threads.@threads :static for i in eachindex(states)
+            state = states[i]
+            (state === nothing || state.num_free >= HEAVY_THRESHOLD) && continue
             tid = Threads.threadid()
             for K_bit in enumerate_from_prepared(state)
                 facets_bin = compl_bases_bin[findall(K_bit)]
-                if euler_sphere_test(facets_bin)
-                    push!(thread_results[tid], copy(K_bit))
-                end
+                euler_sphere_test(facets_bin) && push!(thread_results[tid], copy(K_bit))
             end
             next!(prog)
         end
-
-        for lr in thread_results
-            union!(result, lr)
-        end
+        for lr in thread_results; union!(result, lr); end
     end
 
-    open("results/pseudo_manifolds_10_part_$(l)_test.jls", "w") do io
+    open("results/pseudo_manifolds_10_part_$(l).jls", "w") do io
         serialize(io, result)
     end
 
