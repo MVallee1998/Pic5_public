@@ -53,12 +53,12 @@ iso_DB = open("resources/iso_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9.jls", "r") do io
+pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9_all.jls", "r") do io
     deserialize(io)
 end
 
 build_finalDB_single_v_one_m!(pseudo_manifolds_DB,mat_DB_bin,iso_DB,10)
 
-open("results/pseudo_manifolds_7-10.jls", "w") do io
+open("results/pseudo_manifolds_7-10_all.jls", "w") do io
     serialize(io, pseudo_manifolds_DB)
 end
