@@ -32,7 +32,7 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
 
         states = [prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows) for i in eachindex(prepared)]
 
-        for state in states
+        @showprogress for state in states
             (state === nothing || state.num_free < HEAVY_THRESHOLD) && continue
             for K_bit in enumerate_from_prepared_parallel(state)
                 facets_bin = compl_bases_bin[findall(K_bit)]

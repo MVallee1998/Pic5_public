@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
 #SBATCH --time=2-00:00
-#SBATCH --mem=32G
+#SBATCH --mem=200G
 
 mkdir -p logs results
 
