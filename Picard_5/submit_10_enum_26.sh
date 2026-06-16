@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 #SBATCH --job-name=Pic5_10
-#SBATCH --output=logs/res_Pic5_10_26.out
-#SBATCH --error=logs/res_Pic5_10_26.err
+#SBATCH --output=logs/res_Pic5_10_26_2.out
+#SBATCH --error=logs/res_Pic5_10_26_2.err
 #
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
