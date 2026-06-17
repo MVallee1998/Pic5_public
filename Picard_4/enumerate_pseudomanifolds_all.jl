@@ -34,6 +34,8 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                     end
                 end
             else
+                # Precompute only 
+
                 for (index_contraction, perm) in iso_DB[m][l]
                     @showprogress desc="links=$(length(pseudo_manifolds_DB[m-1][index_contraction]))" for L_bit in pseudo_manifolds_DB[m-1][index_contraction]
                         mandatory_facets_bin = relabel(mat_DB[m-1][index_contraction][findall(L_bit)], perm)

@@ -30,10 +30,15 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
             prepared[i] = subset_bitvector(bases_bin, mandatory_facets_bin)
         end
 
-        states = [prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows) for i in eachindex(prepared)]
-
-        @showprogress desc="doing the hard ones" for state in states
+        heavy_states = Vector{KernelEnumState}()
+        @showprogress desc="preparing heavy states..." for i in eachindex(prepared)
+            state= prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows)
             (state === nothing || state.num_free < HEAVY_THRESHOLD) && continue
+            push!(heavy_states,state)
+        end
+        # states = [prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows) for i in eachindex(prepared)]
+
+        @showprogress desc="doing heavy states..." for state in heavy_states
             for K_bit in enumerate_from_prepared_parallel(state)
                 facets_bin = compl_bases_bin[findall(K_bit)]
                 euler_sphere_test(facets_bin) && push!(result, copy(K_bit))
@@ -43,8 +48,8 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
         foreach(empty!, thread_results)
         prog = Progress(count(s -> s === nothing || s.num_free < HEAVY_THRESHOLD, states),
                         dt=0.5, desc="l=$(l), links=$(length(links))")
-        Threads.@threads :static for i in eachindex(states)
-            state = states[i]
+        Threads.@threads :static for i in eachindex(prepared)
+            state= prepare_kernel_enumeration(A, kernel_basis, prepared[i], rows)
             (state === nothing || state.num_free >= HEAVY_THRESHOLD) && continue
             tid = Threads.threadid()
             for K_bit in enumerate_from_prepared(state)
