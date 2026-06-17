@@ -147,6 +147,6 @@ mmax = 9
 
 build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB_bin, iso_DB, mmax)
 
-# open("results/pseudo_manifolds_7-9_all.jls", "w") do io
-#     serialize(io, pseudo_manifolds_DB)
-# end
+open("results/pseudo_manifolds_7-9_all_one_per_iso.jls", "w") do io
+    serialize(io, pseudo_manifolds_DB)
+end

@@ -76,6 +76,5 @@ mat_DB = open("resources/mat_DB.jls", "r") do io deserialize(io) end
 iso_DB = open("resources/iso_DB.jls", "r") do io deserialize(io) end
 pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9_all.jls", "r") do io deserialize(io) end
 
-Profile.init(n = 10^7, delay = 0.01)
-@profile build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
-Profile.print(mincount=50)
+
+build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
