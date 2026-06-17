@@ -7,7 +7,7 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds.jls", "r") do io
+pseudo_manifolds_DB = open("results/pseudo_manifolds_all_one_per_isom.jls", "r") do io
     deserialize(io)
 end
 
@@ -197,7 +197,7 @@ for m in 6:15
     end
 end
 
-open("results/pseudo_manifolds_autom_sorted_no_ghost.jls", "w") do io
+open("results/pseudo_manifolds_autom_sorted_no_ghost_one_per_isom.jls", "w") do io
     serialize(io, database_before_iso)
 end
 
@@ -209,8 +209,8 @@ println("Number before pre-filters: ", number_before_pre_filters_each_m)
 database_tc_seed_PLS = Dict{Tuple{Int,Int}, Set{Tuple{Vararg{UInt16}}}}()
 
 database_tc_seed_PLS[(0, 2)] = Set([(UInt16(1), UInt16(2))])
-# database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt16)])
-# database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt16)])
+database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt16)])
+database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt16)])
 
 const database_tc_seed_index = Dict{Tuple{Int,Int},
     Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt16}}}}}()
@@ -288,6 +288,6 @@ println("Number of seeds: ", number_seeds_each_m)
 
 # ── Save ──────────────────────────────────────────────────────────────────────
 
-open("results/TC_Seed_PLS.jls", "w") do io
+open("results/TC_Seed_PLS_one_per_isom.jls", "w") do io
     serialize(io, database_tc_seed_PLS)
 end
