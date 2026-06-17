@@ -15,6 +15,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
     for m = mstart:mmax
         println(m)
         pseudo_manifolds_DB[m] = Vector{Set{BitVector}}()
+        n_matroids = length(mat_DB[m])
 
         for (l, bases_bin) in enumerate(mat_DB[m])
             V_bin           = reduce(|, bases_bin)
@@ -49,14 +50,20 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                 dict_one_per_isom = Dict{Int,Tuple{Int,Any,Set{BitVector}}}()
                 compl_set = Set(compl_bases_bin)   # for the automorphism check below
 
-                for (v, (index_contraction, perm)) in enumerate(iso_DB[m][l])
-                    reused = false
+                n_iso = length(iso_DB[m][l])
 
+                # Progress is measured against the real workload: each distinct
+                # contraction pays for kernel enumeration once, not once per vertex.
+                unique_ics    = unique(ic for (ic, _) in iso_DB[m][l])
+                n_links_total = sum(length(pseudo_manifolds_DB[m-1][ic]) for ic in unique_ics)
+                prog = Progress(n_links_total; desc="m=$m | links: ")
+
+                for (v, (index_contraction, perm)) in enumerate(iso_DB[m][l])
                     if haskey(dict_one_per_isom, index_contraction)
                         v_first, perm_first, set_pseudomanifolds = dict_one_per_isom[index_contraction]
 
-                        target_of       = Dict(i => j for (i, j) in perm)
-                        image_perm      = Set(values(target_of))
+                        target_of        = Dict(i => j for (i, j) in perm)
+                        image_perm       = Set(values(target_of))
                         image_perm_first = Set(j for (i, j) in perm_first)
 
                         # The deleted vertex's REAL label is whichever element of l's
@@ -65,36 +72,30 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                         v_missing       = setdiff(support_set, image_perm)
                         v_first_missing = setdiff(support_set, image_perm_first)
 
-                        if length(v_missing) == 1 && length(v_first_missing) == 1
-                            v_label       = first(v_missing)
-                            v_first_label = first(v_first_missing)
+                        v_label       = first(v_missing)
+                        v_first_label = first(v_first_missing)
 
-                            final_perm = Tuple{Int,Int}[(v_first_label, v_label)]
-                            for (i, j_first) in perm_first
-                                push!(final_perm, (j_first, target_of[i]))
-                            end
+                        final_perm = Tuple{Int,Int}[(v_first_label, v_label)]
+                        for (i, j_first) in perm_first
+                            push!(final_perm, (j_first, target_of[i]))
+                        end
 
-                            # Only safe to reuse if final_perm is a genuine automorphism
-                            # of l (maps l's own facets onto themselves) -- a deletion-minor
-                            # isomorphism alone does not guarantee this in general.
-                            if Set(relabel(compl_bases_bin, final_perm)) == compl_set
-                                @showprogress desc="reusing previous results" for K_bit in set_pseudomanifolds
-                                    relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
-                                    new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
-                                    push!(pseudo_manifolds_DB[m][l], new_K_bit)
-                                end
-                                reused = true
-                            else
-                                @warn "did not reuse"
+                        # Only safe to reuse if final_perm is a genuine automorphism
+                        # of l (maps l's own facets onto themselves) -- a deletion-minor
+                        # isomorphism alone does not guarantee this in general.
+                        if Set(relabel(compl_bases_bin, final_perm)) == compl_set
+                            for K_bit in set_pseudomanifolds
+                                relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
+                                new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
+                                push!(pseudo_manifolds_DB[m][l], new_K_bit)
                             end
                         else
-                            @warn "Could not uniquely determine deleted-vertex label" m l index_contraction v v_first
+                            @warn "did not reuse"
                         end
-                    end
-
-                    if !reused
+                    else # Otherwise, we need to enumerate
                         set_pseudomanifolds = Set{BitVector}()
-                        @showprogress desc="links=$(length(pseudo_manifolds_DB[m-1][index_contraction]))" for L_bit in pseudo_manifolds_DB[m-1][index_contraction]
+
+                        for L_bit in pseudo_manifolds_DB[m-1][index_contraction]
                             mandatory_facets_bin = relabel(mat_DB[m-1][index_contraction][findall(L_bit)], perm)
                             mandatory_facets_bit = subset_bitvector(bases_bin, mandatory_facets_bin)
 
@@ -112,6 +113,8 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                                     push!(set_pseudomanifolds, copy(K_bit))
                                 end
                             end
+
+                            next!(prog; showvalues = [(:matroid, "$l/$n_matroids"), (:v, "$v/$n_iso")])
                         end
 
                         # Keep the first representative for this index_contraction;
@@ -124,6 +127,8 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
 
                     m == mmax && last_single_link && break
                 end
+
+                finish!(prog)
             end
         end
     end
@@ -132,6 +137,6 @@ end
 pseudo_manifolds_DB = Dict{Int,Vector{Set{BitVector}}}()
 build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB_bin, iso_DB, mmax; last_single_link=true)
 
-open("results/pseudo_manifolds_all_one_per_isom.jls", "w") do io
+open("results/pseudo_manifolds.jls", "w") do io
     serialize(io, pseudo_manifolds_DB)
 end

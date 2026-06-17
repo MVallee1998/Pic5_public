@@ -74,7 +74,7 @@ m = 10
 
 mat_DB = open("resources/mat_DB.jls", "r") do io deserialize(io) end
 iso_DB = open("resources/iso_DB.jls", "r") do io deserialize(io) end
-pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9_all.jls", "r") do io deserialize(io) end
+pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9.jls", "r") do io deserialize(io) end
 
 
 build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)

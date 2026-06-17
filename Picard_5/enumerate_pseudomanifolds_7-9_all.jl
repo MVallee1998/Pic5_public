@@ -7,7 +7,6 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
     for m = mstart:mmax
         pseudo_manifolds_DB[m] = Vector{Set{BitVector}}()
         n_matroids = length(mat_DB[m])
-        prog_l = Progress(n_matroids, 0, "m=$m | matroid 0/$n_matroids | pm=0 ", 50, :cyan, stderr)
 
         for (l, bases_bin) in enumerate(mat_DB[m])
             V_bin            = reduce(|, bases_bin)
@@ -17,7 +16,6 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
             rows             = sparse_rows(A)          # ← precompute once per matroid
             push!(pseudo_manifolds_DB[m], Set{BitVector}())
 
-            # l's actual vertex labels (not necessarily 1:m).
             support_set = Set(Int.(vertices_from_mask(V_bin)) .+ 1)
 
             if m == mmin
@@ -30,8 +28,8 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                     end
                 end
 
-                n_pm = length(pseudo_manifolds_DB[m][l])
-                next!(prog_l; desc="m=$m | matroid $l/$n_matroids | pm=$n_pm ")
+                # n_pm = length(pseudo_manifolds_DB[m][l])
+                # println(stderr, "m=$m | matroid $l/$n_matroids | pm=$n_pm")
             else
                 iso_list = iso_DB[m][l]
                 n_iso    = length(iso_list)
@@ -47,12 +45,11 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                 # contraction pays for kernel enumeration once, not once per vertex.
                 unique_ics    = unique(ic for (ic, _) in iso_list)
                 n_links_total = sum(length(pseudo_manifolds_DB[m-1][ic]) for ic in unique_ics)
-                n_links_done  = 0
+
+                prog = Progress(n_links_total; desc="m=$m | links: ")
 
                 for (iso_idx, (index_contraction, perm)) in enumerate(iso_list)
-                    reused = false
-
-                    if haskey(dict_one_per_isom, index_contraction)
+                    if haskey(dict_one_per_isom, index_contraction) # If the deletion was already enumerated, there is no need to call the whole enumeration
                         v_first, perm_first, set_pseudomanifolds = dict_one_per_isom[index_contraction]
 
                         target_of        = Dict(i => j for (i, j) in perm)
@@ -64,31 +61,26 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                         v_missing       = setdiff(support_set, image_perm)
                         v_first_missing = setdiff(support_set, image_perm_first)
 
-                        if length(v_missing) == 1 && length(v_first_missing) == 1
-                            v_label       = first(v_missing)
-                            v_first_label = first(v_first_missing)
+                        v_label       = first(v_missing)
+                        v_first_label = first(v_first_missing)
 
-                            final_perm = Tuple{Int,Int}[(v_first_label, v_label)]
-                            for (i, j_first) in perm_first
-                                push!(final_perm, (j_first, target_of[i]))
-                            end
+                        final_perm = Tuple{Int,Int}[(v_first_label, v_label)]
+                        for (i, j_first) in perm_first
+                            push!(final_perm, (j_first, target_of[i]))
+                        end
 
-                            # Only safe to reuse if final_perm is a genuine
-                            # automorphism of l (maps l's own facets onto themselves).
-                            if Set(relabel(compl_bases_bin, final_perm)) == compl_set
-                                for K_bit in set_pseudomanifolds
-                                    relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
-                                    new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
-                                    push!(pseudo_manifolds_DB[m][l], new_K_bit)
-                                end
-                                reused = true
+                        # Only safe to reuse if final_perm is a genuine
+                        # automorphism of l (maps l's own facets onto themselves).
+                        if Set(relabel(compl_bases_bin, final_perm)) == compl_set
+                            for K_bit in set_pseudomanifolds
+                                relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
+                                new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
+                                push!(pseudo_manifolds_DB[m][l], new_K_bit)
                             end
                         else
-                            @warn "Could not uniquely determine deleted-vertex label" m l index_contraction iso_idx v_first
+                            @warn "Problem with the relabeling"
                         end
-                    end
-
-                    if !reused
+                    else # Otherwise, we need to enumerate
                         set_pseudomanifolds = Set{BitVector}()
                         links = collect(pseudo_manifolds_DB[m-1][index_contraction])
 
@@ -108,12 +100,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                                 end
                             end
 
-                            n_links_done += 1
-                            frac   = n_links_done / max(1, n_links_total)
-                            pct    = round(Int, 100 * frac)
-                            filled = clamp(round(Int, 50 * frac), 0, 50)
-                            bar    = "\e[33m" * "█"^filled * "\e[90m" * "░"^(50 - filled) * "\e[0m"
-                            print(stderr, "\e[1B\e[2K\r  ↳ iso $iso_idx/$n_iso | link $n_links_done/$n_links_total ($pct%) |$bar|\e[1A")
+                            next!(prog; showvalues = [(:matroid, "$l/$n_matroids"), (:iso, "$iso_idx/$n_iso")])
                         end
 
                         # Keep the first representative for this index_contraction;
@@ -124,10 +111,10 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                         union!(pseudo_manifolds_DB[m][l], set_pseudomanifolds)
                     end
                 end
-                print(stderr, "\e[1B\e[2K\e[1A")
 
-                n_pm = length(pseudo_manifolds_DB[m][l])
-                next!(prog_l; desc="m=$m | matroid $l/$n_matroids | pm=$n_pm ")
+                finish!(prog)
+                # n_pm = length(pseudo_manifolds_DB[m][l])
+                # println(stderr, "m=$m | matroid $l/$n_matroids | pm=$n_pm")
             end
         end
     end
@@ -147,6 +134,6 @@ mmax = 9
 
 build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB_bin, iso_DB, mmax)
 
-open("results/pseudo_manifolds_7-9_all_one_per_iso.jls", "w") do io
+open("results/pseudo_manifolds_7-9.jls", "w") do io
     serialize(io, pseudo_manifolds_DB)
 end
