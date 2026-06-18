@@ -49,6 +49,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                 #                     from that vertex's mandatory-link constraints
                 dict_one_per_isom = Dict{Int,Tuple{Int,Any,Set{BitVector}}}()
                 compl_set = Set(compl_bases_bin)   # for the automorphism check below
+                bases_set = Set(bases_bin)
 
                 n_iso = length(iso_DB[m][l])
 
@@ -59,6 +60,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                 prog = Progress(n_links_total; desc="m=$m | links: ")
 
                 for (v, (index_contraction, perm)) in enumerate(iso_DB[m][l])
+                    reuse = false
                     if haskey(dict_one_per_isom, index_contraction)
                         v_first, perm_first, set_pseudomanifolds = dict_one_per_isom[index_contraction]
 
@@ -89,10 +91,10 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                                 new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
                                 push!(pseudo_manifolds_DB[m][l], new_K_bit)
                             end
-                        else
-                            @warn "did not reuse"
+                            reuse=true
                         end
-                    else # Otherwise, we need to enumerate
+                    end
+                    if !reuse # Otherwise, we need to enumerate
                         set_pseudomanifolds = Set{BitVector}()
 
                         for L_bit in pseudo_manifolds_DB[m-1][index_contraction]
@@ -106,7 +108,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                             state = prepare_kernel_enumeration(A, kernel_basis, mandatory_facets_bit, rows)
                             state === nothing && continue
                             for K_bit in enumerate_from_prepared_parallel(state)
-                                if m <= mmax
+                                if m <= mmax*0.75
                                     facets_bin = compl_bases_bin[findall(K_bit)]
                                     euler_sphere_test(facets_bin) && push!(set_pseudomanifolds, copy(K_bit))
                                 else

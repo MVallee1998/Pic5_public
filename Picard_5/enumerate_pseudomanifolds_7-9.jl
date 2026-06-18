@@ -49,6 +49,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                 prog = Progress(n_links_total; desc="m=$m | links: ")
 
                 for (iso_idx, (index_contraction, perm)) in enumerate(iso_list)
+                    reuse = false
                     if haskey(dict_one_per_isom, index_contraction) # If the deletion was already enumerated, there is no need to call the whole enumeration
                         v_first, perm_first, set_pseudomanifolds = dict_one_per_isom[index_contraction]
 
@@ -76,11 +77,11 @@ function build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB, iso_DB, mmax; msta
                                 relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
                                 new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
                                 push!(pseudo_manifolds_DB[m][l], new_K_bit)
+                                reuse = true
                             end
-                        else
-                            @warn "Problem with the relabeling"
                         end
-                    else # Otherwise, we need to enumerate
+                    end
+                    if !reuse # Otherwise, we need to enumerate
                         set_pseudomanifolds = Set{BitVector}()
                         links = collect(pseudo_manifolds_DB[m-1][index_contraction])
 

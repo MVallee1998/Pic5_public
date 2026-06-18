@@ -7,7 +7,7 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds_all.jls", "r") do io
+pseudo_manifolds_DB = open("results/pseudo_manifolds.jls", "r") do io
     deserialize(io)
 end
 
