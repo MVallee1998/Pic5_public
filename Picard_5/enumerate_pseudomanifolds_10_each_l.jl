@@ -59,6 +59,7 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
             next!(prog)
         end
         for lr in thread_results; union!(result, lr); end
+        break # for the last case, we only need to run on one vertex v
     end
 
     open("results/pseudo_manifolds_10_part_$(l).jls", "w") do io
