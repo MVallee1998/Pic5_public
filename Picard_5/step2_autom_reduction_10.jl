@@ -180,7 +180,7 @@ database_reduce_autom = reduce_by_automorphisms_parallel(pseudo_manifolds_DB, ma
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
-database_before_iso = open("results/pseudo_manifolds_autom_sorted_no_ghost_7-9_all.jls", "r") do io
+database_before_iso = open("results/pseudo_manifolds_autom_sorted_no_ghost_7-9.jls", "r") do io
     deserialize(io)
 end
 

@@ -14,7 +14,7 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9_all.jls", "r") do io
+pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9.jls", "r") do io
     deserialize(io)
 end
 
@@ -121,7 +121,7 @@ for m in 7:9
     end
 end
 
-open("results/pseudo_manifolds_autom_sorted_no_ghost_7-9_all.jls", "w") do io
+open("results/pseudo_manifolds_autom_sorted_no_ghost_7-9.jls", "w") do io
     serialize(io, database_before_iso)
 end
 
