@@ -10,14 +10,14 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds_7-10.jls", "r") do io
+pseudomanifolds_DB = open("results/pseudomanifolds_7-10.jls", "r") do io
     deserialize(io)
 end
 
 # ── Automorphism reduction ────────────────────────────────────────────────────
 
 function reduce_by_automorphisms(
-    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    pseudomanifolds_DB::Dict{Int, Vector{Set{BitVector}}},
     mat_DB_bin::Dict{Int, Vector{Vector{UInt32}}},
     ms::UnitRange{Int}
 )::Dict{Int, Vector{Set{BitVector}}}
@@ -83,7 +83,7 @@ function reduce_by_automorphisms(
                 return best
             end
 
-            @showprogress desc="Automorphisms (m=$m, l=$l): " for χ in pseudo_manifolds_DB[m][l]
+            @showprogress desc="Automorphisms (m=$m, l=$l): " for χ in pseudomanifolds_DB[m][l]
                 push!(result[m][l], canonical_rep(χ))
             end
         end
@@ -93,7 +93,7 @@ function reduce_by_automorphisms(
 end
 
 function reduce_by_automorphisms_parallel(
-    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    pseudomanifolds_DB::Dict{Int, Vector{Set{BitVector}}},
     mat_DB_bin::Dict{Int, Vector{Vector{UInt32}}},
     ms::UnitRange{Int}
 )::Dict{Int, Vector{Set{BitVector}}}
@@ -159,7 +159,7 @@ function reduce_by_automorphisms_parallel(
             end
 
             # ── Parallel map, then deduplicate ────────────────────────────
-            χ_vec  = collect(pseudo_manifolds_DB[m][l])
+            χ_vec  = collect(pseudomanifolds_DB[m][l])
             reps   = Vector{BitVector}(undef, length(χ_vec))
             prog = Progress(length(χ_vec); desc="Automorphisms (m=$m, l=$l): ", showspeed=true, dt=0.0)
 
@@ -176,11 +176,11 @@ function reduce_by_automorphisms_parallel(
     return result
 end
 
-database_reduce_autom = reduce_by_automorphisms_parallel(pseudo_manifolds_DB, mat_DB_bin, mmax:mmax)
+database_reduce_autom = reduce_by_automorphisms_parallel(pseudomanifolds_DB, mat_DB_bin, mmax:mmax)
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
-database_before_iso = open("results/pseudo_manifolds_autom_sorted_no_ghost_7-9.jls", "r") do io
+database_before_iso = open("results/pseudomanifolds_autom_sorted_no_ghost_7-9.jls", "r") do io
     deserialize(io)
 end
 
@@ -199,11 +199,11 @@ for m in mmax:mmax
     end
 end
 
-open("results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls", "w") do io
+open("results/pseudomanifolds_autom_sorted_no_ghost_7-10.jls", "w") do io
     serialize(io, database_before_iso)
 end
 
 number_before_pre_filters_each_m = [length(database_before_iso[(m - 5 - 1, m)]) for m in 7:10]
 println("Number before pre-filters: ", number_before_pre_filters_each_m)
 
-println("Step 2 done. database_before_iso saved to results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls")
+println("Step 2 done. database_before_iso saved to results/pseudomanifolds_autom_sorted_no_ghost_7-10.jls")

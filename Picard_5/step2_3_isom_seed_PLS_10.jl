@@ -9,7 +9,7 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-database_before_iso = open("results/pseudo_manifolds_autom_sorted_no_ghost_7-10.jls", "r") do io
+database_before_iso = open("results/pseudomanifolds_autom_sorted_no_ghost_7-10.jls", "r") do io
     deserialize(io)
 end
 

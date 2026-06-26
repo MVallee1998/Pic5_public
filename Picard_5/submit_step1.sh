@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-#SBATCH --job-name=Pic5_10
-#SBATCH --output=logs/step1_7-10.out
-#SBATCH --error=logs/step1_7-10.err
+#SBATCH --job-name=step2
+#SBATCH --output=logs/step2_7-10.out
+#SBATCH --error=logs/step2_7-10.err
 #
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=64
 #SBATCH --time=2-00:00
-#SBATCH --mem=30G
+#SBATCH --mem=250G
 
-srun julia step1_compile_10.jl
+srun julia --threads 64 step1_autom_reduction_10.jl

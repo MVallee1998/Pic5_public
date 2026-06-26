@@ -42,7 +42,7 @@ function find_lower_dim_matroids(matroids::Set{Matroid})::Set{Matroid}
     return S_rep
 end
 
-function make_binary(L::Vector{Vector{UInt8}})::Vector{UInt16}
+function make_binary(L::Vector{Vector{UInt8}})::Vector{UInt32}
     result = [reduce(|, UInt16(1) << (i - 1) for i in elt) for elt in L]
     return sort(result)
 end
@@ -57,7 +57,7 @@ function generate_mat_db(pic::Int; path::String="resources/mat_DB.jls", force::B
     M0 = matroid_from_matrix_rows(A)
 
     S = Set{Matroid}([M0])
-    simple_bin_matroids_bin = Dict{Int, Vector{Vector{UInt16}}}()
+    simple_bin_matroids_bin = Dict{Int, Vector{Vector{UInt32}}}()
     m = size(A, 1)
 
     while m > pic + 1
@@ -125,12 +125,18 @@ For each level m in ms and each matroid k in mat_DB[m], finds the first
 non-coloop vertex v such that deletion(M, v) is isomorphic to some entry
 mat_DB[m-1][l], and stores (l, perm) in Iso_DB[m][k].
 """
-function build_iso_db!(
-    Iso_DB::Dict{Int, Dict{Int, Vector{Tuple{Int, Any}}}},
+function build_iso_db(
     mat_DB::Dict{Int, Vector{Vector{UInt32}}};
     ms      = nothing,
-    verbose = false
-)
+    verbose = false,
+    path::String="resources/iso_DB_all.jls",
+    force::Bool=false)
+
+    if !force && isfile(path)
+        @info "Database already exists at '$path', skipping generation. Pass force=true to regenerate."
+        return deserialize(path)
+    end
+    Iso_DB = Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}}()
     for m in ms
         println("Processing m = ", m)
         if !haskey(mat_DB, m - 1)
@@ -193,13 +199,14 @@ function build_iso_db!(
             end
         end
     end
+    open(path, "w") do io
+        serialize(io, iso_DB)
+    end
+    @info "iso_DB_all written to '$path'."
+
     return Iso_DB
 end
 
-iso_DB = Dict{Int, Dict{Int, Vector{Tuple{Int, Any}}}}()
 
-build_iso_db!(iso_DB, simple_bin_matroids_bin, ms = 7:10, verbose = true)
+build_iso_db(simple_bin_matroids_bin; ms = 7:10, verbose = true)
 
-open("resources/iso_DB_all.jls", "w") do io
-    serialize(io, iso_DB)
-end

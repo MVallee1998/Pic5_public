@@ -14,14 +14,14 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9.jls", "r") do io
+pseudomanifolds_DB = open("results/pseudomanifolds_7-9.jls", "r") do io
     deserialize(io)
 end
 
 # ── Automorphism reduction ────────────────────────────────────────────────────
 
 function reduce_by_automorphisms(
-    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    pseudomanifolds_DB::Dict{Int, Vector{Set{BitVector}}},
     mat_DB_bin::Dict{Int, Vector{Vector{UInt32}}},
     ms::UnitRange{Int}
 )::Dict{Int, Vector{Set{BitVector}}}
@@ -87,7 +87,7 @@ function reduce_by_automorphisms(
                 return best
             end
 
-            @showprogress desc="Automorphisms (m=$m, l=$l): " for χ in pseudo_manifolds_DB[m][l]
+            @showprogress desc="Automorphisms (m=$m, l=$l): " for χ in pseudomanifolds_DB[m][l]
                 push!(result[m][l], canonical_rep(χ))
             end
         end
@@ -96,11 +96,11 @@ function reduce_by_automorphisms(
     return result
 end
 
-number_before_automorphisms_each_m = [sum(length.(pseudo_manifolds_DB[m])) for m in 7:9]
+number_before_automorphisms_each_m = [sum(length.(pseudomanifolds_DB[m])) for m in 7:9]
 println("Number before automorphisms: ", number_before_automorphisms_each_m)
 
 
-database_reduce_autom = reduce_by_automorphisms(pseudo_manifolds_DB, mat_DB_bin, 7:9)
+database_reduce_autom = reduce_by_automorphisms(pseudomanifolds_DB, mat_DB_bin, 7:9)
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
@@ -121,7 +121,7 @@ for m in 7:9
     end
 end
 
-open("results/pseudo_manifolds_autom_sorted_no_ghost_7-9.jls", "w") do io
+open("results/pseudomanifolds_autom_sorted_no_ghost_7-9.jls", "w") do io
     serialize(io, database_before_iso)
 end
 

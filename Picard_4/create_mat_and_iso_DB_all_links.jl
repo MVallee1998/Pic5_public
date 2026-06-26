@@ -130,17 +130,26 @@ end
 # Main builder
 # ---------------------------
 """
-build_iso_db!(Iso_DB, mat_DB; ms = sort(collect(keys(mat_DB))), verbose=false)
+build_iso_db(Iso_DB, mat_DB; ms = sort(collect(keys(mat_DB))), verbose=false, path="resources/iso_DB.jls", force=false )
 
-- Iso_DB will be mutated (create empty Dict before passing).
 - mat_DB: Dict{Int, Vector{Vector{Vector{Int}}}} mapping m -> list of matroid-bases
 - For each m in ms (skips if m-1 not present), and each k in mat_DB[m],
   finds first vertex v in 1:m such that corank(contract_at_vertex(M,v)) >= corank(M),
   computes contraction, then finds l and a permutation mapping contraction -> some mat_DB[m-1][l].
 - Stores Iso_DB[m][k] = (l, mapping::Dict{Int,Int}) or (-1, nothing) if not found.
 """
-function build_iso_db!(Iso_DB::Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}}, mat_DB::Dict{Int,Vector{Vector{UInt16}}}; ms=nothing, verbose=false)
-    # ms === nothing && (ms = sort(collect(keys(mat_DB))))
+function build_iso_db(
+    mat_DB::Dict{Int,Vector{Vector{UInt16}}};
+    ms=nothing,
+    verbose=false,
+    path::String="resources/iso_DB.jls",
+    force::Bool=false)
+
+    if !force && isfile(path)
+        @info "Database already exists at '$path', skipping generation. Pass force=true to regenerate."
+        return deserialize(path)
+    end
+    Iso_DB = Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}}()
     for m in ms
         println(m)
         if !haskey(mat_DB, m-1)
@@ -199,18 +208,19 @@ function build_iso_db!(Iso_DB::Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}}, mat_D
             end
         end
     end
+    open(path, "w") do io
+        serialize(io, Iso_DB)
+    end
+    @info "iso_DB_all written to '$path'."
+
     return Iso_DB
 end
 
 
-iso_DB = Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}}()
-
-build_iso_db!(iso_DB,simple_bin_matroids_bin,ms=6:15,verbose=true)
+iso_DB = build_iso_db(simple_bin_matroids_bin,ms=6:15,verbose=true)
 
 
-open("resources/iso_DB_all.jls", "w") do io
-    serialize(io, iso_DB)
-end
+
 
 
 

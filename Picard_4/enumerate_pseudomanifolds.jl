@@ -5,7 +5,7 @@ mmax = 15
 mat_DB_bin = open("resources/mat_DB.jls", "r") do io deserialize(io) end
 iso_DB     = open("resources/iso_DB_all.jls", "r") do io deserialize(io) end
 
-function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVector}}},
+function build_finalDB_single_v!(pseudomanifolds_DB::Dict{Int,Vector{Set{BitVector}}},
                                   mat_DB::Dict{Int,Vector{Vector{UInt16}}},
                                   iso_DB::Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}},
                                   mmax; mstart=-1, last_single_link=false)
@@ -14,7 +14,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
 
     for m = mstart:mmax
         println(m)
-        pseudo_manifolds_DB[m] = Vector{Set{BitVector}}()
+        pseudomanifolds_DB[m] = Vector{Set{BitVector}}()
         n_matroids = length(mat_DB[m])
 
         for (l, bases_bin) in enumerate(mat_DB[m])
@@ -23,7 +23,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
             ridges, A       = boundary_incidence_facets_to_ridges(compl_bases_bin)
             kernel_basis    = kernel_basis_mod2_sparse(A)
             rows            = sparse_rows(A)    # precompute once per matroid
-            push!(pseudo_manifolds_DB[m], Set{BitVector}())
+            push!(pseudomanifolds_DB[m], Set{BitVector}())
 
             # l's *actual* vertex labels (NOT necessarily 1:m -- v_bin/bases_bin
             # may use any subset of the fixed bit-pool up to mmax).
@@ -35,7 +35,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                 if state !== nothing
                     for K_bit in enumerate_from_prepared(state)
                         facets_bin = compl_bases_bin[findall(K_bit)]
-                        euler_sphere_test(facets_bin) && push!(pseudo_manifolds_DB[m][l], copy(K_bit))
+                        euler_sphere_test(facets_bin) && push!(pseudomanifolds_DB[m][l], copy(K_bit))
                     end
                 end
             else
@@ -56,7 +56,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                 # Progress is measured against the real workload: each distinct
                 # contraction pays for kernel enumeration once, not once per vertex.
                 unique_ics    = unique(ic for (ic, _) in iso_DB[m][l])
-                n_links_total = sum(length(pseudo_manifolds_DB[m-1][ic]) for ic in unique_ics)
+                n_links_total = sum(length(pseudomanifolds_DB[m-1][ic]) for ic in unique_ics)
                 prog = Progress(n_links_total; desc="m=$m | links: ")
 
                 for (v, (index_contraction, perm)) in enumerate(iso_DB[m][l])
@@ -89,7 +89,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                             for K_bit in set_pseudomanifolds
                                 relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
                                 new_K_bit        = subset_bitvector(compl_bases_bin, relabeled_facets)
-                                push!(pseudo_manifolds_DB[m][l], new_K_bit)
+                                push!(pseudomanifolds_DB[m][l], new_K_bit)
                             end
                             reuse=true
                         end
@@ -97,7 +97,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                     if !reuse # Otherwise, we need to enumerate
                         set_pseudomanifolds = Set{BitVector}()
 
-                        for L_bit in pseudo_manifolds_DB[m-1][index_contraction]
+                        for L_bit in pseudomanifolds_DB[m-1][index_contraction]
                             mandatory_facets_bin = relabel(mat_DB[m-1][index_contraction][findall(L_bit)], perm)
                             mandatory_facets_bit = subset_bitvector(bases_bin, mandatory_facets_bin)
 
@@ -108,7 +108,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                             state = prepare_kernel_enumeration(A, kernel_basis, mandatory_facets_bit, rows)
                             state === nothing && continue
                             for K_bit in enumerate_from_prepared_parallel(state)
-                                if m <= mmax*0.75
+                                if m <= mmax*0
                                     facets_bin = compl_bases_bin[findall(K_bit)]
                                     euler_sphere_test(facets_bin) && push!(set_pseudomanifolds, copy(K_bit))
                                 else
@@ -124,7 +124,7 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
                         if !haskey(dict_one_per_isom, index_contraction)
                             dict_one_per_isom[index_contraction] = (v, perm, copy(set_pseudomanifolds))
                         end
-                        union!(pseudo_manifolds_DB[m][l], set_pseudomanifolds)
+                        union!(pseudomanifolds_DB[m][l], set_pseudomanifolds)
                     end
 
                     m == mmax && last_single_link && break
@@ -136,9 +136,11 @@ function build_finalDB_single_v!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVec
     end
 end
 
-pseudo_manifolds_DB = Dict{Int,Vector{Set{BitVector}}}()
-build_finalDB_single_v!(pseudo_manifolds_DB, mat_DB_bin, iso_DB, mmax; last_single_link=true)
+pseudomanifolds_DB = Dict{Int,Vector{Set{BitVector}}}()
+build_finalDB_single_v!(pseudomanifolds_DB, mat_DB_bin, iso_DB, mmax; last_single_link=true)
 
-open("results/pseudo_manifolds.jls", "w") do io
-    serialize(io, pseudo_manifolds_DB)
+mkpath("results")
+
+open("results/pseudomanifolds.jls", "w") do io
+    serialize(io, pseudomanifolds_DB)
 end

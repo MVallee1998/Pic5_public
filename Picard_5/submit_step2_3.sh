@@ -9,4 +9,4 @@
 #SBATCH --time=2-00:00
 #SBATCH --mem=100G
 
-srun julia --threads 32 step3_isom_seed_PLS_10.jl
+srun julia --threads 32 step2_3_isom_seed_PLS_10.jl

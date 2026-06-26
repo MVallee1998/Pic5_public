@@ -5,7 +5,7 @@ using Profile
 
 const HEAVY_THRESHOLD = 35
 
-function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{BitVector}}},
+function build_finalDB_single_v_one_l!(pseudomanifolds_DB::Dict{Int,Vector{Set{BitVector}}},
                                        mat_DB::Dict{Int,Vector{Vector{UInt32}}},
                                        iso_DB::Dict{Int,Dict{Int,Vector{Tuple{Int,Any}}}},
                                        m, l)
@@ -22,7 +22,7 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
     rows = sparse_rows(A)
 
     for (index_contraction, perm) in iso_DB[m][l]
-        links = collect(pseudo_manifolds_DB[m-1][index_contraction])
+        links = collect(pseudomanifolds_DB[m-1][index_contraction])
 
         prepared = Vector{BitVector}(undef, length(links))
         @showprogress desc="preparing..." for (i, L_bit) in pairs(links)
@@ -62,7 +62,7 @@ function build_finalDB_single_v_one_l!(pseudo_manifolds_DB::Dict{Int,Vector{Set{
         break # for the last case, we only need to run on one vertex v
     end
 
-    open("results/pseudo_manifolds_10_part_$(l).jls", "w") do io
+    open("results/pseudomanifolds_10_part_$(l).jls", "w") do io
         serialize(io, result)
     end
 
@@ -75,7 +75,7 @@ m = 10
 
 mat_DB = open("resources/mat_DB.jls", "r") do io deserialize(io) end
 iso_DB = open("resources/iso_DB.jls", "r") do io deserialize(io) end
-pseudo_manifolds_DB = open("results/pseudo_manifolds_7-9.jls", "r") do io deserialize(io) end
+pseudomanifolds_DB = open("results/pseudomanifolds_7-9.jls", "r") do io deserialize(io) end
 
 
-build_finalDB_single_v_one_l!(pseudo_manifolds_DB, mat_DB, iso_DB, m, l)
+build_finalDB_single_v_one_l!(pseudomanifolds_DB, mat_DB, iso_DB, m, l)

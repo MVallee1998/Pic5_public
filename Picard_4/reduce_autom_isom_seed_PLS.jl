@@ -7,14 +7,14 @@ mat_DB_bin = open("resources/mat_DB.jls", "r") do io
     deserialize(io)
 end
 
-pseudo_manifolds_DB = open("results/pseudo_manifolds.jls", "r") do io
+pseudomanifolds_DB = open("results/pseudomanifolds.jls", "r") do io
     deserialize(io)
 end
 
-# # ── Automorphism reduction ────────────────────────────────────────────────────
+# ── Phase 1: Automorphism reduction ─────────────────────────────────────────────
 
 function reduce_by_automorphisms(
-    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    pseudomanifolds_DB::Dict{Int, Vector{Set{BitVector}}},
     mat_DB_bin::Dict{Int, Vector{Vector{UInt16}}},
     ms::UnitRange{Int}
 )::Dict{Int, Vector{Set{BitVector}}}
@@ -80,7 +80,7 @@ function reduce_by_automorphisms(
                 return best
             end
 
-            @showprogress desc="Automorphisms (m=$m, l=$l): " for χ in pseudo_manifolds_DB[m][l]
+            @showprogress desc="Automorphisms (m=$m, l=$l): " for χ in pseudomanifolds_DB[m][l]
                 push!(result[m][l], canonical_rep(χ))
             end
         end
@@ -90,7 +90,7 @@ function reduce_by_automorphisms(
 end
 
 function reduce_by_automorphisms_parallel(
-    pseudo_manifolds_DB::Dict{Int, Vector{Set{BitVector}}},
+    pseudomanifolds_DB::Dict{Int, Vector{Set{BitVector}}},
     mat_DB_bin::Dict{Int, Vector{Vector{UInt16}}},
     ms::UnitRange{Int}
 )::Dict{Int, Vector{Set{BitVector}}}
@@ -156,7 +156,7 @@ function reduce_by_automorphisms_parallel(
             end
 
             # ── Parallel map, then deduplicate ────────────────────────────
-            χ_vec  = collect(pseudo_manifolds_DB[m][l])
+            χ_vec  = collect(pseudomanifolds_DB[m][l])
             reps   = Vector{BitVector}(undef, length(χ_vec))
             prog = Progress(length(χ_vec); desc="Automorphisms (m=$m, l=$l): ", showspeed=true, dt=0.0)
 
@@ -173,10 +173,10 @@ function reduce_by_automorphisms_parallel(
     return result
 end
 
-number_before_automorphisms_each_m = [sum(length.(pseudo_manifolds_DB[m])) for m in 6:15]
+number_before_automorphisms_each_m = [sum(length.(pseudomanifolds_DB[m])) for m in 6:15]
 println("Number before automorphisms: ", number_before_automorphisms_each_m)
 
-database_reduce_autom = reduce_by_automorphisms_parallel(pseudo_manifolds_DB, mat_DB_bin, 6:15)
+database_reduce_autom = reduce_by_automorphisms_parallel(pseudomanifolds_DB, mat_DB_bin, 6:15)
 
 # ── Build database_before_iso ─────────────────────────────────────────────────
 
@@ -197,11 +197,11 @@ for m in 6:15
     end
 end
 
-open("results/pseudo_manifolds_autom_sorted_no_ghost.jls", "w") do io
+open("results/pseudomanifolds_autom_sorted_no_ghost_no_euler.jls", "w") do io
     serialize(io, database_before_iso)
 end
 
-# database_before_iso = open("results/pseudo_manifolds_autom_sorted_no_ghost_one_per_isom.jls","r")
+# database_before_iso = open("results/pseudomanifolds_autom_sorted_no_ghost_one_per_isom.jls","r")
 
 number_before_pre_filters_each_m = [length(database_before_iso[(m - 4 - 1, m)]) for m in 6:15]
 println("Number before pre-filters: ", number_before_pre_filters_each_m)
@@ -238,7 +238,7 @@ for m in 3:15
         db_index = get!(database_tc_seed_index, key_in,
                         build_index(db_seed, UInt16))   # shared reference, mutated in-place
 
-        # Phase 1 : filtres parallèles (pur Julia)
+        # Phase 2 : parallel filters
         prog = Progress(length(items); desc="Filters (m=$m, Pic=$Pic): ")
         
 
@@ -258,40 +258,40 @@ for m in 3:15
             number_before_PL_sphere_checks_each_m[m - 5] = length(candidates)
         end
 
-        # Phase 2 : vérifications Oscar séquentielles
-                prog2 = Progress(length(candidates); desc="Iso checks (m=$m, Pic=$Pic): ")
+        # Phase 3 : Sequential check
+        prog2 = Progress(length(candidates); desc="Iso checks (m=$m, Pic=$Pic): ")
 
-        # for facets_bin in candidates
-        #     verts = vertices_from_mask(vertex_mask(facets_bin))
+        for facets_bin in candidates
+            verts = vertices_from_mask(vertex_mask(facets_bin))
 
-        #     all_links_ok = all(verts) do v
-        #         Lk    = find_seed_bit(link_facets(facets_bin, v))
-        #         isempty(Lk) && return false
-        #         key_L = (facet_dim(Lk[1]), count_ones(vertex_mask(Lk)))
-        #         idx_L = get(database_tc_seed_index, key_L, nothing)
-        #         isnothing(idx_L) && return false
-        #         is_isomorphic_to_any_indexed(Lk, idx_L)
-        #     end
+            all_links_ok = all(verts) do v
+                Lk    = find_seed_bit(link_facets(facets_bin, v))
+                isempty(Lk) && return false
+                key_L = (facet_dim(Lk[1]), count_ones(vertex_mask(Lk)))
+                idx_L = get(database_tc_seed_index, key_L, nothing)
+                isnothing(idx_L) && return false
+                is_isomorphic_to_any_indexed(Lk, idx_L)
+            end
 
-        #     if all_links_ok && !is_isomorphic_to_any_indexed(facets_bin, db_index)
-        #         push_indexed!(db_seed, db_index, facets_bin)
-        #         # db_index IS database_tc_seed_index[key_in], so nothing else to update
-        #     end
-        #     next!(prog2; showvalues = [(:candidates, length(candidates)),
-        #                                (:seeds,      length(db_seed)),
-        #                                (:buckets,    length(db_index))])
-        # end
-        # if Pic ==4 && m>=6
-        #     number_seeds_each_m[m - 5] = length(db_seed)
-        # end
+            if all_links_ok && !is_isomorphic_to_any_indexed(facets_bin, db_index)
+                push_indexed!(db_seed, db_index, facets_bin)
+                # db_index IS database_tc_seed_index[key_in], so nothing else to update
+            end
+            next!(prog2; showvalues = [(:candidates, length(candidates)),
+                                       (:seeds,      length(db_seed)),
+                                       (:buckets,    length(db_index))])
+        end
+        if Pic ==4 && m>=6
+            number_seeds_each_m[m - 5] = length(db_seed)
+        end
     end
 end
 
 println("Number before PL sphere checks: ", number_before_PL_sphere_checks_each_m)
-# println("Number of seeds: ", number_seeds_each_m)
+println("Number of seeds: ", number_seeds_each_m)
 
-# ── Save ──────────────────────────────────────────────────────────────────────
+#  ── Save ─────────────────────────────────────────────────────────────────────
 
-# open("results/TC_Seed_PLS.jls", "w") do io
-#     serialize(io, database_tc_seed_PLS)
-# end
+open("results/TC_Seed_PLS.jls", "w") do io
+    serialize(io, database_tc_seed_PLS)
+end
