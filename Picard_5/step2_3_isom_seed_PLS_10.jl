@@ -17,16 +17,11 @@ database_tc_seed_PLS = open("results/TC_seed_PLS_7-9.jls", "r") do io
     deserialize(io)
 end
 
-# database_tc_seed_PLS_Pic4 = open("../Picard4/results/TC_seed_PLS.jls", "r") do io
-#     deserialize(io)
-# end
-
 database_tc_seed_PLS[(4, 10)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8, 9:10)]),UInt32)])
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
-# Build once, outside the m loop
 pls_indices = Dict{Any, Any}()
 for (key, db) in database_tc_seed_PLS
     pls_indices[key] = build_index(db)
@@ -56,7 +51,7 @@ haskey(database_before_iso, key_in)
 items   = collect(database_before_iso[key_in])
 db_seed = get!(database_tc_seed_PLS, key_in, Set{Tuple{Vararg{UInt32}}}())
 
-# Phase 1 : filtres parallèles (pur Julia)
+# Phase 1 : parallel filters
 prog = Progress(length(items); desc="Filters (m=$m, Pic=$Pic): ")
 
 candidates = let

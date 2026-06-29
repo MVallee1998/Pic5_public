@@ -13,10 +13,6 @@ const topaz = Polymake.topaz
 using Nemo
 F = GF(2)
 
-using Nemo
-using Serialization
-using ProgressMeter
-
 function all_nonzero_binary_vectors(n::Int)::Matrix{Int}
     k = (2^n) - 1
     mat = Matrix{Int}(undef, k, n)

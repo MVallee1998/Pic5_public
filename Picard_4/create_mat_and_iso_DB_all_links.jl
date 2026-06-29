@@ -13,9 +13,6 @@ const topaz = Polymake.topaz
 using Nemo
 F = GF(2)
 
-using Nemo
-using Serialization
-using ProgressMeter
 
 function all_nonzero_binary_vectors(n::Int)::Matrix{Int}
     k = (2^n) - 1
@@ -130,13 +127,19 @@ end
 # Main builder
 # ---------------------------
 """
-build_iso_db(Iso_DB, mat_DB; ms = sort(collect(keys(mat_DB))), verbose=false, path="resources/iso_DB.jls", force=false )
+build_iso_db(mat_DB; ms, verbose, path, force) -> Iso_DB
 
-- mat_DB: Dict{Int, Vector{Vector{Vector{Int}}}} mapping m -> list of matroid-bases
-- For each m in ms (skips if m-1 not present), and each k in mat_DB[m],
-  finds first vertex v in 1:m such that corank(contract_at_vertex(M,v)) >= corank(M),
-  computes contraction, then finds l and a permutation mapping contraction -> some mat_DB[m-1][l].
-- Stores Iso_DB[m][k] = (l, mapping::Dict{Int,Int}) or (-1, nothing) if not found.
+Build a database linking each matroid to its single-element deletions in the layer below.
+
+- `mat_DB`: `Dict{Int, Vector{Vector{UInt16}}}` mapping ground-set size `m` to a list of
+  matroids, each encoded as a sorted vector of bit-packed bases.
+- For each size `m` in `ms` (skips if `m-1` is absent) and each matroid `k` in `mat_DB[m]`,
+  iterates over every non-coloop vertex `v` and computes `deletion(M, v)`.
+- For each deletion, searches `mat_DB[m-1]` for an isomorphic matroid at index `l`, then
+  calls `topaz_isomorphism` to obtain a concrete vertex permutation mapping `mat_DB[m-1][l]`
+  onto the deletion.
+- `Iso_DB[m][k]` is a `Vector{Tuple{Int,Any}}` with one entry `(l, perm)` per non-coloop
+  vertex (in the same order as `keys(dict_v)`); `l = -1` and `perm = nothing` if no match.
 """
 function build_iso_db(
     mat_DB::Dict{Int,Vector{Vector{UInt16}}};
@@ -162,9 +165,7 @@ function build_iso_db(
             V=vertex_list_of_bases(Mbases)
             M = matroid_from_bases(Mbases,V)
             Iso_DB[m][k] =Vector{Tuple{Int,Any}}()
-            found_v=false
             dict_v = Dict{Int,Matroid}()
-            # v_chosen=-1
             for v in V
                 if v in coloops(M)
                     continue

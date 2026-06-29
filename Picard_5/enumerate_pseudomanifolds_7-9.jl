@@ -41,8 +41,6 @@ function build_finalDB_single_v!(pseudomanifolds_DB, mat_DB, iso_DB, mmax; mstar
                 dict_one_per_isom = Dict{Int,Tuple{Int,Any,Set{BitVector}}}()
                 compl_set = Set(compl_bases_bin)
 
-                # Progress is measured against the real workload: each distinct
-                # contraction pays for kernel enumeration once, not once per vertex.
                 unique_ics    = unique(ic for (ic, _) in iso_list)
                 n_links_total = sum(length(pseudomanifolds_DB[m-1][ic]) for ic in unique_ics)
 
@@ -70,8 +68,6 @@ function build_finalDB_single_v!(pseudomanifolds_DB, mat_DB, iso_DB, mmax; mstar
                             push!(final_perm, (j_first, target_of[i]))
                         end
 
-                        # Only safe to reuse if final_perm is a genuine
-                        # automorphism of l (maps l's own facets onto themselves).
                         if Set(relabel(compl_bases_bin, final_perm)) == compl_set
                             for K_bit in set_pseudomanifolds
                                 relabeled_facets = relabel(compl_bases_bin[findall(K_bit)], final_perm)
@@ -114,8 +110,6 @@ function build_finalDB_single_v!(pseudomanifolds_DB, mat_DB, iso_DB, mmax; mstar
                 end
 
                 finish!(prog)
-                # n_pm = length(pseudomanifolds_DB[m][l])
-                # println(stderr, "m=$m | matroid $l/$n_matroids | pm=$n_pm")
             end
         end
     end

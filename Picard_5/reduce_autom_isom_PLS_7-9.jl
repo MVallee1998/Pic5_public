@@ -130,92 +130,91 @@ println("Number before pre-filters: ", number_before_pre_filters_each_m)
 
 # # ── Seed database initialization ──────────────────────────────────────────────
 
-# database_tc_seed_PLS = Dict{Tuple{Int,Int}, Set{Tuple{Vararg{UInt32}}}}()
+database_tc_seed_PLS = Dict{Tuple{Int,Int}, Set{Tuple{Vararg{UInt32}}}}()
 
-# database_tc_seed_PLS[(0, 2)] = Set([(UInt32(1), UInt32(2))])
-# database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt32)])
-# database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt32)])
-# # database_tc_seed_PLS[(4, 10)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8, 9:10)]),UInt32)])
-
-
-# const database_tc_seed_index = Dict{Tuple{Int,Int},
-#     Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt32}}}}}()
-
-# for (k, v) in database_tc_seed_PLS
-#     database_tc_seed_index[k] = build_index(v, UInt32)
-# end
+database_tc_seed_PLS[(0, 2)] = Set([(UInt32(1), UInt32(2))])
+database_tc_seed_PLS[(3, 8)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8)]),UInt32)])
+database_tc_seed_PLS[(2, 6)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6)]),UInt32)])
+# database_tc_seed_PLS[(4, 10)] = Set([index_to_bin(vec([[x...] for x in Iterators.product(1:2, 3:4, 5:6, 7:8, 9:10)]),UInt32)])
 
 
-# # ── Main loop ─────────────────────────────────────────────────────────────────
+const database_tc_seed_index = Dict{Tuple{Int,Int},
+    Dict{Tuple{Vector{Int},Vector{Int}}, Vector{Tuple{Vararg{UInt32}}}}}()
 
-# number_before_PL_sphere_checks_each_m = zeros(Int, 3)
+for (k, v) in database_tc_seed_PLS
+    database_tc_seed_index[k] = build_index(v, UInt32)
+end
 
-# number_seeds_each_m = zeros(Int, 3)
 
-# for m in 3:9
-#     for Pic in 1:5
-#         key_in = (m - Pic - 1, m)
-#         haskey(database_before_iso, key_in) || continue
-#         items   = collect(database_before_iso[key_in])
-#         db_seed = get!(database_tc_seed_PLS, key_in, Set{Tuple{Vararg{UInt32}}}())
-#         db_index = get!(database_tc_seed_index, key_in,
-#                         build_index(db_seed, UInt32))   # shared reference, mutated in-place
+# ── Main loop ─────────────────────────────────────────────────────────────────
+
+number_before_PL_sphere_checks_each_m = zeros(Int, 3)
+
+number_seeds_each_m = zeros(Int, 3)
+
+for m in 3:9
+    for Pic in 1:5
+        key_in = (m - Pic - 1, m)
+        haskey(database_before_iso, key_in) || continue
+        items   = collect(database_before_iso[key_in])
+        db_seed = get!(database_tc_seed_PLS, key_in, Set{Tuple{Vararg{UInt32}}}())
+        db_index = get!(database_tc_seed_index, key_in,
+                        build_index(db_seed, UInt32))   # shared reference, mutated in-place
                         
-#         # Phase 1 : parallel filters
-#         prog = Progress(length(items); desc="Filters (m=$m, Pic=$Pic): ")
+        # Phase 1 : parallel filters
+        prog = Progress(length(items); desc="Filters (m=$m, Pic=$Pic): ")
 
 
-#         candidates = let
-#             local_cands = [Vector{Tuple{Vararg{UInt32}}}() for _ in 1:length(items)]
-#             @threads :dynamic for i in eachindex(items)
-#                 facets_bin = items[i]
-#                 next!(prog; showvalues = [(:seeds, length(db_seed)), (:Pic, Pic), (:m, m)])
-#                 is_seed_bit(facets_bin)    || continue
-#                 is_mod2_sphere(facets_bin) || continue
-#                 push!(local_cands[i], Tuple(facets_bin))
-#             end
-#             reduce(vcat, local_cands)
-#         end
+        candidates = let
+            local_cands = [Vector{Tuple{Vararg{UInt32}}}() for _ in 1:length(items)]
+            @threads :dynamic for i in eachindex(items)
+                facets_bin = items[i]
+                next!(prog; showvalues = [(:seeds, length(db_seed)), (:Pic, Pic), (:m, m)])
+                is_seed_bit(facets_bin)    || continue
+                is_mod2_sphere(facets_bin) || continue
+                push!(local_cands[i], Tuple(facets_bin))
+            end
+            reduce(vcat, local_cands)
+        end
 
-#         if Pic == 5 && m>=7
-#             number_before_PL_sphere_checks_each_m[m-6] = length(candidates)
-#         end
+        if Pic == 5 && m>=7
+            number_before_PL_sphere_checks_each_m[m-6] = length(candidates)
+        end
 
-#         # Phase 2 : Oscar verifications (sequential)
-#         prog2 = Progress(length(candidates); desc="Iso checks (m=$m, Pic=$Pic): ")
+        # Phase 2 : Oscar verifications (sequential)
+        prog2 = Progress(length(candidates); desc="Iso checks (m=$m, Pic=$Pic): ")
 
-#         for facets_bin in candidates
-#             verts = vertices_from_mask(vertex_mask(facets_bin))
+        for facets_bin in candidates
+            verts = vertices_from_mask(vertex_mask(facets_bin))
 
-#             all_links_ok = all(verts) do v
-#                 Lk    = find_seed_bit(link_facets(facets_bin, v))
-#                 isempty(Lk) && return false
-#                 key_L = (facet_dim(Lk[1]), count_ones(vertex_mask(Lk)))
-#                 idx_L = get(database_tc_seed_index, key_L, nothing)
-#                 isnothing(idx_L) && return false
-#                 is_isomorphic_to_any_indexed(Lk, idx_L)
-#             end
+            all_links_ok = all(verts) do v
+                Lk    = find_seed_bit(link_facets(facets_bin, v))
+                isempty(Lk) && return false
+                key_L = (facet_dim(Lk[1]), count_ones(vertex_mask(Lk)))
+                idx_L = get(database_tc_seed_index, key_L, nothing)
+                isnothing(idx_L) && return false
+                is_isomorphic_to_any_indexed(Lk, idx_L)
+            end
 
-#             if all_links_ok && !is_isomorphic_to_any_indexed(facets_bin, db_index)
-#                 push_indexed!(db_seed, db_index, facets_bin)
-#                 # db_index IS database_tc_seed_index[key_in], so nothing else to update
-#             end
-#             next!(prog2; showvalues = [(:candidates, length(candidates)),
-#                                        (:seeds,      length(db_seed)),
-#                                        (:buckets,    length(db_index))])
-#         end
+            if all_links_ok && !is_isomorphic_to_any_indexed(facets_bin, db_index)
+                push_indexed!(db_seed, db_index, facets_bin)
+            end
+            next!(prog2; showvalues = [(:candidates, length(candidates)),
+                                       (:seeds,      length(db_seed)),
+                                       (:buckets,    length(db_index))])
+        end
 
-#         if Pic == 5 && m>=7
-#             number_seeds_each_m[m-6] = length(db_seed)
-#         end
-#     end
-# end
+        if Pic == 5 && m>=7
+            number_seeds_each_m[m-6] = length(db_seed)
+        end
+    end
+end
 
-# println("Number before PL sphere checks: ", number_before_PL_sphere_checks_each_m)
-# println("Number of seeds: ", number_seeds_each_m)
+println("Number before PL sphere checks: ", number_before_PL_sphere_checks_each_m)
+println("Number of seeds: ", number_seeds_each_m)
 
-# # ── Save ──────────────────────────────────────────────────────────────────────
+# ── Save ──────────────────────────────────────────────────────────────────────
 
-# open("results/TC_seed_PLS_7-9_all.jls", "w") do io
-#     serialize(io, database_tc_seed_PLS)
-# end
+open("results/TC_seed_PLS_7-9_all.jls", "w") do io
+    serialize(io, database_tc_seed_PLS)
+end
