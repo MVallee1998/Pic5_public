@@ -1,6 +1,6 @@
 # Pic5_public
 
-Companion repository for the paper [*insert arxiv link here*].
+Companion repository for the paper [https://arxiv.org/abs/2606.29309].
 
 This repository contains the Julia scripts used to enumerate mod $2$ toric-colorable weak pseudomanifolds and extract toric seeds for smooth complete toric varieties of Picard number $4$ and $5$.
 
