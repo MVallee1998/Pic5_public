@@ -32,27 +32,35 @@ Pic5_public/
 ├── simplicial_complex_utilities.jl   # Core utilities for simplicial complexes
 ├── enumerate_kernel.jl               # Gray code kernel enumeration (Alg. 1 & 2)
 │
+├── export/
+│   └── to_plaintext.jl               # Export TC seeds to human-readable plain text
+│
+├── objects/
+│   ├── TC_seeds_pic4.txt             # 3 153 TC seeds (Picard 4), one per line
+│   └── TC_seeds_pic5.txt             # 200 030 TC seeds (Picard 5), one per line
+│
 ├── Picard_4/                         # Scripts for Picard number 4
 │   ├── RUN.jl                        # One-shot pipeline launcher
 │   ├── create_mat_and_iso_DB_all_links.jl  # Build MatDB and isoDB (Alg. 3)
-│   ├── create_mat_and_iso_DB.jl            # Auxiliary / alternative DB builder
 │   ├── enumerate_pseudomanifolds.jl        # Enumerate weak pseudomanifolds (Alg. 4)
 │   ├── reduce_autom_isom_seed_PLS.jl       # Post-processing (steps 1–3)
 │   ├── resources/
 │   │   ├── mat_DB.jls                # Serialized MatDB
 │   │   ├── iso_DB.jls                # Serialized isoDB (restricted links)
 │   │   └── iso_DB_all.jls            # Serialized isoDB (all links)
-│   └── results/
-│       ├── pseudo_manifolds.jls                               # Raw enumeration output
-│       ├── pseudo_manifolds_autom_sorted_no_ghost.jls         # After step 1
-│       └── TC_Seed_PLS.jls                                    # Final TCSeeds output
+│   ├── results/
+│   │   ├── pseudomanifolds.jls                                # Raw enumeration output
+│   │   ├── pseudo_manifolds_autom_sorted_no_ghost.jls         # After step 1
+│   │   └── TC_seed_PLS.jls                                    # Final TCSeeds output
+│   └── statistics/
+│       └── orbit_reduction_stats.jl  # Orbit-reduction efficiency table
 │
 └── Picard_5/                         # Scripts for Picard number 5
     ├── create_mat_and_iso_DB_all_links.jl    # Build MatDB and isoDB (Alg. 3) [~30 min]
-    ├── create_mat_and_iso_DB.jl              # Auxiliary / alternative DB builder
     ├── enumerate_pseudomanifolds_7-9.jl      # Enumerate for m ≤ 9 (Alg. 4)
     ├── enumerate_pseudomanifolds_10_each_l.jl # Enumerate for m = 10, one matroid at a time
     ├── reduce_autom_isom_PLS_7-9.jl          # Post-processing for m ≤ 9 [≥ 20 GB RAM]
+    ├── orbit_reduction_stats.jl              # Orbit-reduction efficiency table
     ├── step0_compile_10.jl                   # Merge m = 10 results into one file
     ├── step1_autom_reduction_10.jl           # Automorphism reduction for m = 10
     ├── step2_3_isom_seed_PLS_10.jl           # Isomorphism reduction + seed extraction
@@ -65,12 +73,14 @@ Pic5_public/
     │   ├── mat_DB.jls                        # Serialized MatDB
     │   ├── iso_DB.jls                        # Serialized isoDB (restricted links)
     │   └── iso_DB_all.jls                    # Serialized isoDB (all links)
-    └── results/
-        ├── pseudo_manifolds_7-9.jls                            # Raw enumeration (m ≤ 9)
-        ├── pseudo_manifolds_7-10.jls                           # Merged enumeration (m ≤ 10)
-        ├── pseudo_manifolds_autom_sorted_no_ghost_7-9.jls      # After step 1 (m ≤ 9)
-        ├── TC_seed_PLS_7-9.jls                                 # TCSeeds (m ≤ 9)
-        └── TC_seed_PLS_7-10.jls                                # Final TCSeeds (m ≤ 10)
+    ├── results/
+    │   ├── pseudomanifolds_7-9.jls                             # Raw enumeration (m ≤ 9)
+    │   ├── pseudomanifolds_7-10.jls                            # Merged enumeration (m ≤ 10)
+    │   ├── pseudomanifolds_autom_sorted_no_ghost_7-9.jls       # After step 1 (m ≤ 9)
+    │   ├── TC_seed_PLS_7-9.jls                                 # TCSeeds (m ≤ 9)
+    │   └── TC_seed_PLS_7-10.jls                                # Final TCSeeds (m ≤ 10)
+    └── statistics/
+        └── kernel_size.jl            # Kernel-dimension and free-generator distributions
 ```
 
 ---
@@ -82,6 +92,27 @@ Pic5_public/
 - **`simplicial_complex_utilities.jl`** — Utility functions for simplicial complexes encoded as `Vector{UInt}` bitmasks. Includes: boundary incidence matrices, mod $2$ homology / sphere tests, Euler characteristic, link computation, wedge-pair detection, seed extraction, Oscar interoperability, and an indexed isomorphism database.
 
 - **`enumerate_kernel.jl`** — Parallel and sequential Gray code enumeration of the kernel of a Boolean matrix subject to row-sum constraints. This is the workhorse for enumerating pseudomanifolds; implements **Algorithms 1 and 2** of the paper.
+
+---
+
+### Folder `export`
+
+- **`to_plaintext.jl`** — Reads the serialized TC seed databases for both Picard numbers and writes them as human-readable plain text to `objects/TC_seeds_pic4.txt` and `objects/TC_seeds_pic5.txt`. Run from `export/` with:
+  ```bash
+  julia --project=.. to_plaintext.jl
+  ```
+  The script also asserts the expected seed counts (3 153 for Picard 4, 200 030 for Picard 5) as a sanity check.
+
+---
+
+### Folder `objects`
+
+Plain-text exports of the final TC seed sets, intended for easy inspection or downstream use without Julia. The files in this folder are also published on Zenodo at [https://doi.org/10.5281/zenodo.21106287](https://doi.org/10.5281/zenodo.21106287).
+
+- **`TC_seeds_pic4.txt`** — 3 153 TC seeds for Picard number 4, one seed per line.
+- **`TC_seeds_pic5.txt`** — 200 030 TC seeds for Picard number 5, one seed per line.
+
+Each line lists the facets of one seed as space-separated sets, e.g. `{1,2,3} {1,2,4} …`. Vertices are 1-indexed.
 
 ---
 
@@ -100,7 +131,9 @@ All files here address the case of Picard number $4$ (cosimple binary matroids o
 
 - **`reduce_autom_isom_seed_PLS.jl`** — Post-processing pipeline (steps 1–3 of the paper):
   - **Step 1** (automorphism reduction): saves `results/pseudo_manifolds_autom_sorted_no_ghost.jls`.
-  - **Steps 2–3** (isomorphism reduction + seed extraction): saves `results/TC_Seed_PLS.jls`, corresponding to $\texttt{TCSeeds}$ in the paper.
+  - **Steps 2–3** (isomorphism reduction + seed extraction): saves `results/TC_seed_PLS.jls`, corresponding to $\texttt{TCSeeds}$ in the paper.
+
+- **`statistics/orbit_reduction_stats.jl`** — Prints a table showing, for each vertex count $m$, how many vertex-contraction calls the orbit-reduction heuristic saves versus the naive per-vertex enumeration (Picard number 4). Reads `resources/mat_DB.jls` and `resources/iso_DB_all.jls`.
 
 ---
 
@@ -128,6 +161,10 @@ All files here address the case of Picard number $5$ (cosimple binary matroids o
 - **`step1_autom_reduction_10.jl`** — Step 1 post-processing for $m \le 10$: reduces `pseudo_manifolds_7-10.jls` by the automorphism group of each matroid. Saves `results/pseudo_manifolds_auto_sorted_no_ghosts_7-10.jls`.
 
 - **`step2_3_isom_seed_PLS_10.jl`** — Steps 2 and 3 of the post-processing for $m \le 10$. Saves the final `results/TC_seed_PLS_7-10.jls`, corresponding to $\texttt{TCSeeds}$ in the paper.
+
+- **`orbit_reduction_stats.jl`** — Prints a table showing, for each vertex count $m \in \{8, \ldots, 9\}$, the orbit-reduction savings for Picard number 5 (same role as its Picard_4 counterpart, using `UInt32` matroids). Reads `resources/mat_DB.jls` and `resources/iso_DB_all.jls`.
+
+- **`statistics/kernel_size.jl`** — Computes and prints summary statistics for two distributions at $m = 10$: (1) the kernel dimension $d$ across all 46 cosimple binary matroids of corank 5, and (2) the number of free generators $|\mathcal{S}^\circ|$ (and the reduction $d - |\mathcal{S}^\circ|$) seen during the actual enumeration calls. Reads `resources/mat_DB.jls`, `resources/iso_DB.jls`, and `results/pseudomanifolds_7-9.jls`.
 
 #### Slurm scripts (HPC)
 

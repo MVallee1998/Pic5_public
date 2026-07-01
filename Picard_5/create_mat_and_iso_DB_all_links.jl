@@ -204,5 +204,5 @@ function build_iso_db(
 end
 
 
-build_iso_db(simple_bin_matroids_bin; ms = 7:11, verbose = true, force=true)
+build_iso_db(simple_bin_matroids_bin; ms = 7:10, verbose = true, force=true)
 
